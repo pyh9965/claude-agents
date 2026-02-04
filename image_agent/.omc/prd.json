@@ -1,0 +1,112 @@
+{
+  "project": "부동산 블로그 이미지 수집 자동화",
+  "branchName": "ralph/image-collection-automation",
+  "description": "청약홈 및 분양사이트에서 이미지를 자동 수집하고, AI로 분류하며, 썸네일을 자동 생성하는 파이프라인 구축",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Crawl4AI 기본 환경 설정",
+      "description": "As a 개발자, I want to Crawl4AI를 설치하고 기본 설정을 완료 so that 웹 크롤링 기능을 사용할 수 있다.",
+      "acceptanceCriteria": [
+        "Crawl4AI 패키지 설치 완료",
+        "기본 크롤링 테스트 성공 (청약홈 접속 확인)",
+        "AsyncWebCrawler 기본 사용법 검증",
+        "프로젝트 의존성 requirements.txt에 추가"
+      ],
+      "priority": 1,
+      "passes": false
+    },
+    {
+      "id": "US-002",
+      "title": "청약홈 이미지 수집 모듈 구현",
+      "description": "As a 사용자, I want to 청약홈에서 분양 단지의 이미지를 자동으로 수집 so that 수동 다운로드 시간을 절약할 수 있다.",
+      "acceptanceCriteria": [
+        "청약홈 URL에서 평면도, 배치도, 조감도 이미지 추출",
+        "모집공고 PDF 링크 자동 감지 및 다운로드",
+        "추출된 이미지 로컬 저장 기능 구현",
+        "메타데이터(단지명, 타입, 수집일시) 함께 저장"
+      ],
+      "priority": 2,
+      "passes": false
+    },
+    {
+      "id": "US-003",
+      "title": "PDF 이미지 추출 모듈 구현",
+      "description": "As a 사용자, I want to 모집공고 PDF에서 이미지를 자동 추출 so that PDF 내 평면도/배치도를 활용할 수 있다.",
+      "acceptanceCriteria": [
+        "PyMuPDF 또는 pymupdf4llm으로 PDF 이미지 추출",
+        "추출된 이미지 품질 보존 (최소 300dpi)",
+        "이미지 파일명 자동 생성 (단지명_타입_순번)",
+        "추출 결과 로그 기록"
+      ],
+      "priority": 3,
+      "passes": false
+    },
+    {
+      "id": "US-004",
+      "title": "GPT-4 Vision 이미지 분류 모듈 구현",
+      "description": "As a 사용자, I want to 수집된 이미지를 AI가 자동으로 분류 so that 수동 분류 시간을 없앨 수 있다.",
+      "acceptanceCriteria": [
+        "OpenAI GPT-4 Vision API 연동 완료",
+        "이미지 유형 분류 (평면도/배치도/조감도/위치도/기타)",
+        "평면도인 경우 타입 식별 (59A, 84D 등)",
+        "분류 신뢰도(confidence) 함께 반환",
+        "분류 결과 JSON 형식으로 저장"
+      ],
+      "priority": 4,
+      "passes": false
+    },
+    {
+      "id": "US-005",
+      "title": "수집-분류 통합 파이프라인 구현",
+      "description": "As a 사용자, I want to 수집부터 분류까지 한 번에 실행 so that 전체 프로세스를 자동화할 수 있다.",
+      "acceptanceCriteria": [
+        "URL 입력 시 수집→추출→분류 순차 실행",
+        "각 단계별 진행 상태 로깅",
+        "에러 발생 시 적절한 예외 처리",
+        "최종 결과 리포트 생성 (수집 이미지 수, 분류 결과 요약)"
+      ],
+      "priority": 5,
+      "passes": false
+    },
+    {
+      "id": "US-006",
+      "title": "Bannerbear 썸네일 생성 모듈 구현",
+      "description": "As a 블로거, I want to 분양 정보로 썸네일을 자동 생성 so that 블로그 포스팅 시간을 단축할 수 있다.",
+      "acceptanceCriteria": [
+        "Bannerbear API 연동 완료",
+        "기본 템플릿 1종 설정 (단지명, 분양가, 배경이미지)",
+        "동적 데이터 바인딩 기능 구현",
+        "생성된 썸네일 로컬 저장"
+      ],
+      "priority": 6,
+      "passes": false
+    },
+    {
+      "id": "US-007",
+      "title": "n8n 워크플로우 통합",
+      "description": "As a 운영자, I want to n8n으로 전체 파이프라인을 오케스트레이션 so that 자동화 스케줄링이 가능하다.",
+      "acceptanceCriteria": [
+        "n8n 워크플로우 JSON 파일 작성",
+        "트리거 설정 (수동/스케줄)",
+        "각 모듈을 HTTP 엔드포인트로 호출",
+        "결과 알림 (Slack/Discord/이메일 중 1개)"
+      ],
+      "priority": 7,
+      "passes": false
+    },
+    {
+      "id": "US-008",
+      "title": "CLI 인터페이스 구현",
+      "description": "As a 사용자, I want to 커맨드라인에서 간편하게 실행 so that 복잡한 설정 없이 사용할 수 있다.",
+      "acceptanceCriteria": [
+        "argparse 또는 click 기반 CLI 구현",
+        "주요 명령어: collect, classify, generate-thumbnail",
+        "설정 파일(config.yaml) 지원",
+        "--help 문서화 완료"
+      ],
+      "priority": 8,
+      "passes": false
+    }
+  ]
+}

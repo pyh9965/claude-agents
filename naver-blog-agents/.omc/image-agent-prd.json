@@ -1,0 +1,479 @@
+{
+  "prd": {
+    "title": "Blog Image Collection Agent",
+    "version": "1.0.0",
+    "created": "2026-01-31",
+    "status": "draft",
+    "overview": {
+      "description": "블로그 콘텐츠를 분석하여 필요한 이미지를 자동으로 판단하고, 실제 사진 수집 및 AI 생성을 통해 완성된 이미지 세트를 제공하는 에이전트 시스템",
+      "problem_statement": "자동화된 블로그 콘텐츠 생성 시스템에서 이미지 수집은 여전히 수동 작업으로 남아있어 전체 워크플로우의 병목이 됨. 콘텐츠 유형별로 필요한 이미지가 다르고, 저작권 안전한 이미지 확보가 어려움",
+      "solution": "AI 기반 콘텐츠 분석으로 필요 이미지를 자동 판단하고, 다중 소스(Google Places, 스톡 이미지, 나노바나나 AI 생성)에서 하이브리드 수집하여 최적의 이미지 세트 제공",
+      "target_users": [
+        "블로그 콘텐츠 자동화 시스템 운영자",
+        "n8n 워크플로우 사용자",
+        "naver-blog-agents 시스템 사용자"
+      ]
+    },
+    "goals": {
+      "primary": [
+        "블로그 콘텐츠 분석 → 필요 이미지 자동 판단",
+        "다중 소스 하이브리드 이미지 수집",
+        "나노바나나 3.0 Pro를 통한 AI 이미지 생성",
+        "이미지 자동 배치 및 HTML 삽입"
+      ],
+      "success_metrics": [
+        "콘텐츠당 이미지 수집 성공률 95% 이상",
+        "수집부터 배치까지 3분 이내 완료",
+        "저작권 안전 이미지 100%",
+        "이미지 품질 점수 80점 이상"
+      ]
+    },
+    "constraints": {
+      "technical": [
+        "Python 3.11+ 기반",
+        "기존 이미지수집agent 코드베이스 활용",
+        "naver-blog-agents 시스템과 통합 가능해야 함"
+      ],
+      "budget": "비용 무관 - 품질 우선",
+      "timeline": "2주 이내 MVP 완성"
+    }
+  },
+  "user_stories": [
+    {
+      "id": "US-001",
+      "title": "콘텐츠 분석 및 이미지 요구사항 추출",
+      "as_a": "블로그 자동화 시스템",
+      "i_want": "HTML/Markdown 블로그 콘텐츠를 분석하여 필요한 이미지 목록을 자동으로 생성",
+      "so_that": "수동으로 이미지 요구사항을 정의하지 않아도 됨",
+      "acceptance_criteria": [
+        "콘텐츠에서 주요 엔티티(장소명, 음식명, 제품명 등) 추출",
+        "섹션별 이미지 유형 판단 (썸네일, 본문, 인포그래픽 등)",
+        "콘텐츠 길이와 유형에 따른 적정 이미지 수량 결정",
+        "각 이미지에 대한 검색 키워드 및 생성 프롬프트 자동 생성"
+      ],
+      "priority": "P0",
+      "story_points": 8
+    },
+    {
+      "id": "US-002",
+      "title": "실제 장소 사진 수집 (Google Places)",
+      "as_a": "맛집/여행 블로그 작성자",
+      "i_want": "언급된 실제 장소의 사진을 Google Places API에서 자동 수집",
+      "so_that": "실제 장소 사진으로 블로그 신뢰도를 높일 수 있음",
+      "acceptance_criteria": [
+        "장소명 + 위치로 Google Places 검색",
+        "장소당 최대 5장의 고품질 사진 수집",
+        "사진 출처(attribution) 자동 기록",
+        "수집 실패 시 다음 소스로 자동 Fallback"
+      ],
+      "priority": "P0",
+      "story_points": 5
+    },
+    {
+      "id": "US-003",
+      "title": "스톡 이미지 수집 (Unsplash/Pexels)",
+      "as_a": "범용 블로그 작성자",
+      "i_want": "무료 스톡 이미지 사이트에서 키워드 기반 이미지 수집",
+      "so_that": "저작권 걱정 없이 고품질 이미지를 사용할 수 있음",
+      "acceptance_criteria": [
+        "Unsplash API 우선 검색, 실패 시 Pexels Fallback",
+        "한국어 키워드 → 영어 번역 자동 처리",
+        "가로형(landscape) 이미지 우선 수집",
+        "블로그 최적 해상도(1200px)로 다운로드"
+      ],
+      "priority": "P1",
+      "story_points": 3
+    },
+    {
+      "id": "US-004",
+      "title": "AI 이미지 생성 (나노바나나 3.0 Pro)",
+      "as_a": "블로그 운영자",
+      "i_want": "나노바나나 3.0 Pro를 사용하여 썸네일, 배너, 인포그래픽, 음식 사진 생성",
+      "so_that": "실제 사진 수집 불가 시에도 고품질 이미지 확보 가능",
+      "acceptance_criteria": [
+        "콘텐츠 분석 기반 자동 프롬프트 생성",
+        "썸네일/배너: 16:9 비율, 텍스트 오버레이 고려",
+        "음식 사진: 푸드 포토그래피 스타일",
+        "인포그래픽: 정보 요약 카드뉴스 스타일",
+        "생성 이미지에 'AI Generated' 메타데이터 포함"
+      ],
+      "priority": "P0",
+      "story_points": 8
+    },
+    {
+      "id": "US-005",
+      "title": "하이브리드 수집 파이프라인",
+      "as_a": "시스템",
+      "i_want": "실제 사진 → 스톡 → AI 생성 순서로 Fallback하는 파이프라인",
+      "so_that": "항상 최적의 이미지를 확보할 수 있음",
+      "acceptance_criteria": [
+        "이미지 유형별 수집 우선순위 설정 가능",
+        "1차 소스 실패 시 자동으로 다음 소스 시도",
+        "모든 소스 실패 시 AI 생성으로 최종 Fallback",
+        "수집 소스별 통계 로깅"
+      ],
+      "priority": "P0",
+      "story_points": 5
+    },
+    {
+      "id": "US-006",
+      "title": "이미지 품질 검증 및 후처리",
+      "as_a": "품질 관리자",
+      "i_want": "수집된 이미지의 품질을 자동 검증하고 최적화",
+      "so_that": "저품질 이미지가 블로그에 사용되지 않음",
+      "acceptance_criteria": [
+        "해상도 최소 기준(800x600) 검증",
+        "블러/노이즈 감지로 저품질 이미지 필터링",
+        "블로그 최적 크기로 자동 리사이즈",
+        "WebP 변환으로 용량 최적화"
+      ],
+      "priority": "P1",
+      "story_points": 5
+    },
+    {
+      "id": "US-007",
+      "title": "자동 이미지 배치 및 HTML 삽입",
+      "as_a": "블로그 자동화 시스템",
+      "i_want": "수집된 이미지를 콘텐츠의 적절한 위치에 자동 삽입",
+      "so_that": "수동 이미지 배치 작업이 필요 없음",
+      "acceptance_criteria": [
+        "섹션(h2/h3) 시작 부분에 관련 이미지 배치",
+        "이미지 간 최소 간격 유지 (300자 이상)",
+        "alt text 및 caption 자동 생성",
+        "반응형 이미지 태그 생성 (srcset)"
+      ],
+      "priority": "P1",
+      "story_points": 5
+    },
+    {
+      "id": "US-008",
+      "title": "CLI 및 모듈 인터페이스",
+      "as_a": "개발자/운영자",
+      "i_want": "CLI로 독립 실행하거나, 모듈로 import하여 사용",
+      "so_that": "다양한 환경에서 유연하게 사용 가능",
+      "acceptance_criteria": [
+        "CLI: blog-image collect <content.html> --output <dir>",
+        "CLI: blog-image generate --prompt <text> --type thumbnail",
+        "모듈: from blog_image_agent import ImageCollector",
+        "설정 파일(.env)로 API 키 관리"
+      ],
+      "priority": "P0",
+      "story_points": 3
+    },
+    {
+      "id": "US-009",
+      "title": "AI 모델 선택 기능",
+      "as_a": "시스템 운영자",
+      "i_want": "콘텐츠 분석에 사용할 AI 모델을 선택",
+      "so_that": "비용과 품질 사이에서 유연하게 선택 가능",
+      "acceptance_criteria": [
+        "지원 모델: Gemini 2.0 Flash, Gemini 2.0 Pro, Claude",
+        "설정 파일 또는 CLI 옵션으로 모델 선택",
+        "기본값: Gemini 2.0 Flash (비용 효율)",
+        "모델별 프롬프트 최적화"
+      ],
+      "priority": "P2",
+      "story_points": 3
+    },
+    {
+      "id": "US-010",
+      "title": "이미지 캐싱 시스템",
+      "as_a": "시스템",
+      "i_want": "동일 키워드/장소에 대한 이미지 캐싱",
+      "so_that": "반복 요청 시 API 비용 절감 및 속도 향상",
+      "acceptance_criteria": [
+        "키워드 기반 캐시 키 생성",
+        "캐시 만료 기간 설정 가능 (기본 7일)",
+        "캐시 히트율 통계 제공",
+        "수동 캐시 무효화 기능"
+      ],
+      "priority": "P2",
+      "story_points": 3
+    }
+  ],
+  "technical_requirements": {
+    "architecture": {
+      "pattern": "Pipeline + Strategy Pattern",
+      "components": [
+        {
+          "name": "ContentAnalyzer",
+          "responsibility": "블로그 콘텐츠 분석 및 이미지 요구사항 추출",
+          "dependencies": ["AI Model (Gemini/Claude)"]
+        },
+        {
+          "name": "ImageCollectorPipeline",
+          "responsibility": "다중 소스 하이브리드 이미지 수집 오케스트레이션",
+          "dependencies": ["GooglePlacesCollector", "StockImageCollector", "NanobananGenerator"]
+        },
+        {
+          "name": "GooglePlacesCollector",
+          "responsibility": "Google Places API를 통한 실제 장소 사진 수집",
+          "dependencies": ["Google Places API"]
+        },
+        {
+          "name": "StockImageCollector",
+          "responsibility": "Unsplash/Pexels 스톡 이미지 수집",
+          "dependencies": ["Unsplash API", "Pexels API"]
+        },
+        {
+          "name": "NanobananGenerator",
+          "responsibility": "나노바나나 3.0 Pro를 통한 AI 이미지 생성",
+          "dependencies": ["Nanobanana API"]
+        },
+        {
+          "name": "ImageProcessor",
+          "responsibility": "이미지 품질 검증, 리사이즈, 최적화",
+          "dependencies": ["Pillow", "OpenCV"]
+        },
+        {
+          "name": "ImagePlacer",
+          "responsibility": "콘텐츠 내 이미지 자동 배치 및 HTML 삽입",
+          "dependencies": ["BeautifulSoup"]
+        }
+      ]
+    },
+    "apis": {
+      "required": [
+        {
+          "name": "Google Places API (New)",
+          "purpose": "실제 장소 사진 수집",
+          "pricing": "$17/1000 Text Search + $7/1000 Photos",
+          "docs": "https://developers.google.com/maps/documentation/places/web-service"
+        },
+        {
+          "name": "Unsplash API",
+          "purpose": "무료 스톡 이미지",
+          "pricing": "무료 (50건/시간, 5000건/월)",
+          "docs": "https://unsplash.com/documentation"
+        },
+        {
+          "name": "Pexels API",
+          "purpose": "무료 스톡 이미지 (백업)",
+          "pricing": "무료 (200건/시간, 20000건/월)",
+          "docs": "https://www.pexels.com/api/documentation/"
+        },
+        {
+          "name": "Nanobanana 3.0 Pro",
+          "purpose": "AI 이미지 생성 (썸네일, 배너, 음식, 인포그래픽)",
+          "pricing": "Google AI Studio 기반",
+          "docs": "https://ai.google.dev/"
+        },
+        {
+          "name": "Gemini API",
+          "purpose": "콘텐츠 분석 및 이미지 요구사항 추출",
+          "pricing": "Flash: 무료티어 / Pro: $0.00125/1K tokens",
+          "docs": "https://ai.google.dev/docs"
+        }
+      ],
+      "optional": [
+        {
+          "name": "Kakao Map API",
+          "purpose": "위치 지도 이미지 생성",
+          "pricing": "무료",
+          "docs": "https://apis.map.kakao.com/"
+        },
+        {
+          "name": "Claude API",
+          "purpose": "콘텐츠 분석 대안",
+          "pricing": "$3/MTok input, $15/MTok output",
+          "docs": "https://docs.anthropic.com/"
+        }
+      ]
+    },
+    "data_models": [
+      {
+        "name": "ImageRequirement",
+        "fields": {
+          "id": "string",
+          "type": "enum[thumbnail, banner, content, infographic, map]",
+          "keywords": "list[string]",
+          "prompt": "string (AI 생성용)",
+          "section_id": "string",
+          "priority": "int",
+          "preferred_source": "enum[real, stock, ai, any]"
+        }
+      },
+      {
+        "name": "CollectedImage",
+        "fields": {
+          "id": "string",
+          "url": "string",
+          "local_path": "string",
+          "source": "enum[google, unsplash, pexels, nanobanana]",
+          "width": "int",
+          "height": "int",
+          "attribution": "string",
+          "alt_text": "string",
+          "caption": "string",
+          "requirement_id": "string"
+        }
+      },
+      {
+        "name": "ImageMap",
+        "fields": {
+          "content_id": "string",
+          "images": "list[CollectedImage]",
+          "placements": "list[{image_id, position, html}]",
+          "statistics": "{total, by_source, cache_hits}"
+        }
+      }
+    ],
+    "file_structure": {
+      "root": "blog-image-agent/",
+      "structure": [
+        "src/",
+        "  analyzers/",
+        "    __init__.py",
+        "    content_analyzer.py      # 콘텐츠 분석 및 요구사항 추출",
+        "    entity_extractor.py      # 엔티티(장소, 음식 등) 추출",
+        "  collectors/",
+        "    __init__.py",
+        "    base.py                  # 추상 베이스 클래스",
+        "    google_places.py         # Google Places API",
+        "    stock_images.py          # Unsplash + Pexels",
+        "    nanobanana.py            # 나노바나나 AI 생성",
+        "    kakao_map.py             # 카카오맵 지도 (선택)",
+        "  processors/",
+        "    __init__.py",
+        "    quality_validator.py     # 품질 검증",
+        "    image_optimizer.py       # 리사이즈, WebP 변환",
+        "  placers/",
+        "    __init__.py",
+        "    auto_placer.py           # 자동 배치 로직",
+        "    html_inserter.py         # HTML 이미지 태그 삽입",
+        "  pipeline/",
+        "    __init__.py",
+        "    orchestrator.py          # 전체 파이프라인 조율",
+        "  cli/",
+        "    __init__.py",
+        "    main.py                  # Click CLI",
+        "  utils/",
+        "    __init__.py",
+        "    config.py                # 설정 관리",
+        "    cache.py                 # 이미지 캐싱",
+        "    translator.py            # 한→영 키워드 번역",
+        "tests/",
+        "  test_analyzers.py",
+        "  test_collectors.py",
+        "  test_pipeline.py",
+        "config/",
+        "  default.yaml              # 기본 설정",
+        "  prompts/                   # AI 프롬프트 템플릿",
+        "    content_analysis.txt",
+        "    nanobanana_thumbnail.txt",
+        "    nanobanana_food.txt",
+        "    nanobanana_infographic.txt",
+        ".env.example",
+        "requirements.txt",
+        "README.md"
+      ]
+    }
+  },
+  "nanobanana_integration": {
+    "description": "나노바나나 3.0 Pro (Imagen 3)를 활용한 AI 이미지 생성",
+    "image_types": [
+      {
+        "type": "thumbnail",
+        "aspect_ratio": "16:9",
+        "style": "블로그 대표 이미지, 텍스트 오버레이 공간 확보",
+        "prompt_template": "Professional blog thumbnail for {topic}, clean composition with space for text overlay, {style} aesthetic, high quality photography"
+      },
+      {
+        "type": "banner",
+        "aspect_ratio": "3:1",
+        "style": "섹션 구분 배너, 미니멀 디자인",
+        "prompt_template": "Minimal banner image for {section_title}, subtle gradient, modern design, wide format"
+      },
+      {
+        "type": "food_photo",
+        "aspect_ratio": "4:3",
+        "style": "푸드 포토그래피, 식욕 자극",
+        "prompt_template": "Appetizing {dish_name}, professional food photography, warm lighting, shallow depth of field, Korean restaurant setting"
+      },
+      {
+        "type": "infographic",
+        "aspect_ratio": "1:1",
+        "style": "카드뉴스 스타일, 정보 요약",
+        "prompt_template": "Clean infographic card summarizing {topic}, {brand_color} accent, minimal icons, Korean text friendly layout"
+      }
+    ],
+    "quality_settings": {
+      "resolution": "1024x1024 (기본), 최대 2048x2048",
+      "format": "PNG (생성) → WebP (최적화)",
+      "retry_on_failure": 3
+    }
+  },
+  "implementation_phases": [
+    {
+      "phase": 1,
+      "name": "Core Pipeline",
+      "duration": "5일",
+      "stories": ["US-001", "US-005", "US-008"],
+      "deliverables": [
+        "ContentAnalyzer 구현",
+        "Pipeline 오케스트레이터",
+        "기본 CLI"
+      ]
+    },
+    {
+      "phase": 2,
+      "name": "Image Collectors",
+      "duration": "4일",
+      "stories": ["US-002", "US-003", "US-004"],
+      "deliverables": [
+        "Google Places Collector",
+        "Stock Image Collector",
+        "Nanobanana Generator"
+      ]
+    },
+    {
+      "phase": 3,
+      "name": "Processing & Placement",
+      "duration": "3일",
+      "stories": ["US-006", "US-007"],
+      "deliverables": [
+        "Image Processor",
+        "Auto Placer",
+        "HTML Inserter"
+      ]
+    },
+    {
+      "phase": 4,
+      "name": "Polish & Integration",
+      "duration": "2일",
+      "stories": ["US-009", "US-010"],
+      "deliverables": [
+        "모델 선택 기능",
+        "캐싱 시스템",
+        "naver-blog-agents 통합",
+        "문서화"
+      ]
+    }
+  ],
+  "risks_and_mitigations": [
+    {
+      "risk": "Google Places API 비용 초과",
+      "probability": "중",
+      "impact": "중",
+      "mitigation": "캐싱 적극 활용, 스톡 이미지 우선 사용 옵션 제공"
+    },
+    {
+      "risk": "나노바나나 생성 품질 불균일",
+      "probability": "중",
+      "impact": "중",
+      "mitigation": "프롬프트 최적화, 품질 검증 후 재생성 로직"
+    },
+    {
+      "risk": "한국어 키워드 영어 번역 품질",
+      "probability": "저",
+      "impact": "저",
+      "mitigation": "Gemini 번역 활용, 수동 매핑 테이블 보조"
+    },
+    {
+      "risk": "콘텐츠 분석 정확도",
+      "probability": "중",
+      "impact": "중",
+      "mitigation": "Few-shot 프롬프팅, 분석 결과 검증 로직"
+    }
+  ]
+}

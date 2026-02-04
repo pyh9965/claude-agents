@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-01-27T19:13:35.634731",
+  "apt_name": "드파인 연희",
+  "apt_code": "fa562",
+  "api_results": {
+    "/api/apt/fa562/stories": {
+      "status_code": 400,
+      "content_length": 11
+    },
+    "/api/apt/fa562/reviews": {
+      "status_code": 400,
+      "content_length": 11
+    },
+    "/api/apt/fa562/comments": {
+      "status_code": 400,
+      "content_length": 11
+    }
+  }
+}

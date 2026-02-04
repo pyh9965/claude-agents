@@ -1,0 +1,8 @@
+[project]
+name = "image-collection-agent"
+version = "0.1.0"
+description = "부동산 블로그 이미지 수집 자동화 도구"
+requires-python = ">=3.10"
+
+[project.scripts]
+image-agent = "src.cli.main:cli"

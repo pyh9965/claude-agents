@@ -1,0 +1,70 @@
+{
+  "total_size": 585727,
+  "top_level_keys": [
+    "queryState",
+    "altState"
+  ],
+  "query_count": 6,
+  "query_keys": [
+    [
+      {
+        "scope": "housingExitPoll",
+        "entity": "getHousingExitPollResult",
+        "param": {
+          "aptHash": "fa562",
+          "cid": ""
+        }
+      }
+    ],
+    [
+      {
+        "entity": "deliveryInfra",
+        "param": {
+          "aptHash": "fa562"
+        }
+      }
+    ],
+    [
+      {
+        "entity": "agents",
+        "param": {
+          "aptHash": "fa562"
+        }
+      }
+    ],
+    [
+      {
+        "scope": "review",
+        "entity": "reviewPhotoSection",
+        "param": {
+          "aptHash": "fa562"
+        }
+      }
+    ],
+    [
+      {
+        "scope": "review",
+        "entity": {
+          "target": "apt",
+          "id": "fa562"
+        },
+        "param": {
+          "target": "apt",
+          "aptHash": "fa562",
+          "hash": null,
+          "orderType": 1,
+          "isSummary": true
+        }
+      }
+    ],
+    [
+      {
+        "entity": "regionRange",
+        "param": {
+          "aptHash": "fa562",
+          "areaNo": 0
+        }
+      }
+    ]
+  ]
+}

@@ -1,0 +1,337 @@
+[
+  {
+    "content": "Claude 3.5 Sonnet is absolutely amazing for coding tasks. The code quality and understanding of context is on another level. Highly recommend for developers! #Claude #AI #Coding",
+    "author": "dev_masters",
+    "author_name": "Dev Masters",
+    "timestamp": "2026-01-27T22:35:42.156789",
+    "likes": 342,
+    "comments": 28,
+    "reposts": 15,
+    "hashtags": [
+      "#Claude",
+      "#AI",
+      "#Coding"
+    ],
+    "url": "https://www.threads.net/@dev_masters/post/4567891",
+    "language": "en"
+  },
+  {
+    "content": "인공지능 시대에 필요한 역량은 무엇일까? 프롬프트 엔지니어링, 데이터 리터러시, 창의적 사고 등이 중요해질 것 같습니다. #AI #인공지능 #미래역량 #교육",
+    "author": "future_skills",
+    "author_name": "미래역량연구소",
+    "timestamp": "2026-01-27T21:48:15.234567",
+    "likes": 287,
+    "comments": 42,
+    "reposts": 23,
+    "hashtags": [
+      "#AI",
+      "#인공지능",
+      "#미래역량",
+      "#교육"
+    ],
+    "url": "https://www.threads.net/@future_skills/post/7891234",
+    "language": "ko"
+  },
+  {
+    "content": "ChatGPT의 새로운 업데이트가 정말 인상적이네요. 응답 속도가 훨씬 빨라졌고, 한국어 이해도도 크게 향상된 것 같습니다. #AI #ChatGPT #인공지능",
+    "author": "tech_enthusiast_kr",
+    "author_name": "테크 애호가",
+    "timestamp": "2026-01-27T20:22:37.891234",
+    "likes": 456,
+    "comments": 35,
+    "reposts": 28,
+    "hashtags": [
+      "#AI",
+      "#ChatGPT",
+      "#인공지능"
+    ],
+    "url": "https://www.threads.net/@tech_enthusiast_kr/post/3456789",
+    "language": "ko"
+  },
+  {
+    "content": "Machine learning model deployment in production - lessons learned from 6 months of running AI services at scale. Thread incoming! #MachineLearning #AI #MLOps #Production",
+    "author": "mlops_expert",
+    "author_name": "MLOps Expert",
+    "timestamp": "2026-01-27T19:15:23.567890",
+    "likes": 198,
+    "comments": 16,
+    "reposts": 12,
+    "hashtags": [
+      "#MachineLearning",
+      "#AI",
+      "#MLOps",
+      "#Production"
+    ],
+    "url": "https://www.threads.net/@mlops_expert/post/8901234",
+    "language": "en"
+  },
+  {
+    "content": "AI 에이전트 개발 트렌드를 보면 정말 미래가 가까워진 느낌이에요. 자율적으로 작업을 수행하는 AI, 정말 신기합니다. #AIAgent #AI #인공지능 #미래기술",
+    "author": "future_tech_kr",
+    "author_name": "퓨처테크",
+    "timestamp": "2026-01-27T18:42:11.345678",
+    "likes": 412,
+    "comments": 31,
+    "reposts": 19,
+    "hashtags": [
+      "#AIAgent",
+      "#AI",
+      "#인공지능",
+      "#미래기술"
+    ],
+    "url": "https://www.threads.net/@future_tech_kr/post/5678912",
+    "language": "ko"
+  },
+  {
+    "content": "GPT-4의 코드 생성 능력이 정말 대단해요. 복잡한 알고리즘도 설명과 함께 깔끔하게 작성해줍니다. #GPT4 #AI #코딩 #개발",
+    "author": "code_with_ai",
+    "author_name": "AI와 코딩",
+    "timestamp": "2026-01-27T17:28:55.123456",
+    "likes": 389,
+    "comments": 27,
+    "reposts": 22,
+    "hashtags": [
+      "#GPT4",
+      "#AI",
+      "#코딩",
+      "#개발"
+    ],
+    "url": "https://www.threads.net/@code_with_ai/post/6789123",
+    "language": "ko"
+  },
+  {
+    "content": "Building AI agents with LangChain and AutoGPT. The possibilities for automation are endless! #AIAgent #LangChain #AutoGPT #AI #Automation",
+    "author": "agent_builder",
+    "author_name": "Agent Builder",
+    "timestamp": "2026-01-27T16:05:42.789012",
+    "likes": 267,
+    "comments": 19,
+    "reposts": 14,
+    "hashtags": [
+      "#AIAgent",
+      "#LangChain",
+      "#AutoGPT",
+      "#AI",
+      "#Automation"
+    ],
+    "url": "https://www.threads.net/@agent_builder/post/2345678",
+    "language": "en"
+  },
+  {
+    "content": "ChatGPT로 업무 효율이 2배는 늘어난 것 같아요. 이메일 작성, 아이디어 브레인스토밍, 코드 리뷰까지 다 도움받고 있습니다. #ChatGPT #AI #생산성",
+    "author": "work_smarter",
+    "author_name": "스마트워커",
+    "timestamp": "2026-01-27T14:33:28.456789",
+    "likes": 523,
+    "comments": 48,
+    "reposts": 31,
+    "hashtags": [
+      "#ChatGPT",
+      "#AI",
+      "#생산성"
+    ],
+    "url": "https://www.threads.net/@work_smarter/post/9012345",
+    "language": "ko"
+  },
+  {
+    "content": "Anthropic's Claude is my go-to AI for research and writing. The way it maintains context and provides thoughtful responses is unmatched. #Anthropic #Claude #AI #Research",
+    "author": "research_writer",
+    "author_name": "Research Writer",
+    "timestamp": "2026-01-27T13:17:56.234567",
+    "likes": 294,
+    "comments": 22,
+    "reposts": 17,
+    "hashtags": [
+      "#Anthropic",
+      "#Claude",
+      "#AI",
+      "#Research"
+    ],
+    "url": "https://www.threads.net/@research_writer/post/1234567",
+    "language": "en"
+  },
+  {
+    "content": "OpenAI의 GPT-4 Vision으로 이미지 분석 프로젝트 진행 중. 정확도가 놀라워요! 다음 주에 결과 공유하겠습니다. #OpenAI #GPT4 #AI #ComputerVision",
+    "author": "vision_ai_lab",
+    "author_name": "Vision AI Lab",
+    "timestamp": "2026-01-27T11:52:34.678901",
+    "likes": 378,
+    "comments": 26,
+    "reposts": 21,
+    "hashtags": [
+      "#OpenAI",
+      "#GPT4",
+      "#AI",
+      "#ComputerVision"
+    ],
+    "url": "https://www.threads.net/@vision_ai_lab/post/4567812",
+    "language": "ko"
+  },
+  {
+    "content": "Google's Gemini Pro is showing impressive results in multi-modal tasks. Excited to see where this technology goes! #Gemini #Google #AI #MultiModal",
+    "author": "google_ai_fan",
+    "author_name": "Google AI Fan",
+    "timestamp": "2026-01-27T10:26:17.890123",
+    "likes": 311,
+    "comments": 24,
+    "reposts": 18,
+    "hashtags": [
+      "#Gemini",
+      "#Google",
+      "#AI",
+      "#MultiModal"
+    ],
+    "url": "https://www.threads.net/@google_ai_fan/post/7891256",
+    "language": "en"
+  },
+  {
+    "content": "LLM 파인튜닝 첫 시도! 생각보다 어렵지만 재미있네요. 도메인 특화 모델 만드는 과정이 흥미롭습니다. #LLM #AI #파인튜닝 #머신러닝",
+    "author": "ml_engineer_kr",
+    "author_name": "ML 엔지니어",
+    "timestamp": "2026-01-27T08:44:52.123456",
+    "likes": 256,
+    "comments": 18,
+    "reposts": 13,
+    "hashtags": [
+      "#LLM",
+      "#AI",
+      "#파인튜닝",
+      "#머신러닝"
+    ],
+    "url": "https://www.threads.net/@ml_engineer_kr/post/3456712",
+    "language": "ko"
+  },
+  {
+    "content": "AI 기술이 교육 현장을 어떻게 바꿀 수 있을까요? 개인화된 학습이 가능해지는 미래가 기대됩니다. #AI교육 #에듀테크 #AI #교육",
+    "author": "edu_innovator",
+    "author_name": "교육 혁신가",
+    "timestamp": "2026-01-27T07:15:38.567890",
+    "likes": 423,
+    "comments": 37,
+    "reposts": 25,
+    "hashtags": [
+      "#AI교육",
+      "#에듀테크",
+      "#AI",
+      "#교육"
+    ],
+    "url": "https://www.threads.net/@edu_innovator/post/6789145",
+    "language": "ko"
+  },
+  {
+    "content": "Microsoft Copilot integration with Office 365 is a game changer for productivity. AI assistants are becoming essential tools. #Copilot #AI #Productivity #Microsoft",
+    "author": "productivity_pro",
+    "author_name": "Productivity Pro",
+    "timestamp": "2026-01-27T05:38:21.345678",
+    "likes": 387,
+    "comments": 29,
+    "reposts": 20,
+    "hashtags": [
+      "#Copilot",
+      "#AI",
+      "#Productivity",
+      "#Microsoft"
+    ],
+    "url": "https://www.threads.net/@productivity_pro/post/8901278",
+    "language": "en"
+  },
+  {
+    "content": "딥러닝 공부 시작한 지 3개월 됐는데, 드디어 첫 번째 프로젝트 완성! 감정 분석 모델 만들었어요. #딥러닝 #AI #머신러닝 #프로젝트",
+    "author": "ai_beginner_2024",
+    "author_name": "AI 입문자",
+    "timestamp": "2026-01-27T04:12:45.789012",
+    "likes": 312,
+    "comments": 33,
+    "reposts": 16,
+    "hashtags": [
+      "#딥러닝",
+      "#AI",
+      "#머신러닝",
+      "#프로젝트"
+    ],
+    "url": "https://www.threads.net/@ai_beginner_2024/post/2345612",
+    "language": "ko"
+  },
+  {
+    "content": "Comparing different AI models: GPT-4, Claude, and Gemini. Each has its strengths. Claude excels at nuanced conversations, GPT-4 at breadth, Gemini at multimodal tasks. #AI #LLM #Comparison",
+    "author": "ai_analyst",
+    "author_name": "AI Analyst",
+    "timestamp": "2026-01-27T02:47:33.456789",
+    "likes": 445,
+    "comments": 41,
+    "reposts": 27,
+    "hashtags": [
+      "#AI",
+      "#LLM",
+      "#Comparison"
+    ],
+    "url": "https://www.threads.net/@ai_analyst/post/5678945",
+    "language": "en"
+  },
+  {
+    "content": "생성형 AI가 콘텐츠 제작 산업을 어떻게 변화시킬지 정말 궁금합니다. 창작자들의 역할은 더욱 중요해질 것 같아요. #생성형AI #AI #콘텐츠제작",
+    "author": "content_creator_ai",
+    "author_name": "AI 크리에이터",
+    "timestamp": "2026-01-27T01:29:18.234567",
+    "likes": 368,
+    "comments": 30,
+    "reposts": 19,
+    "hashtags": [
+      "#생성형AI",
+      "#AI",
+      "#콘텐츠제작"
+    ],
+    "url": "https://www.threads.net/@content_creator_ai/post/9012378",
+    "language": "ko"
+  },
+  {
+    "content": "The ethics of AI development is something we need to discuss more. How do we ensure AI benefits everyone? #AIEthics #AI #Technology #Society",
+    "author": "ai_ethics_forum",
+    "author_name": "AI Ethics Forum",
+    "timestamp": "2026-01-26T23:55:42.678901",
+    "likes": 276,
+    "comments": 45,
+    "reposts": 22,
+    "hashtags": [
+      "#AIEthics",
+      "#AI",
+      "#Technology",
+      "#Society"
+    ],
+    "url": "https://www.threads.net/@ai_ethics_forum/post/1234512",
+    "language": "en"
+  },
+  {
+    "content": "Just attended an amazing webinar on LLM applications in healthcare. The potential is enormous! #LLM #AI #Healthcare #MachineLearning",
+    "author": "ai_in_health",
+    "author_name": "AI in Healthcare",
+    "timestamp": "2026-01-26T22:18:27.890123",
+    "likes": 234,
+    "comments": 21,
+    "reposts": 15,
+    "hashtags": [
+      "#LLM",
+      "#AI",
+      "#Healthcare",
+      "#MachineLearning"
+    ],
+    "url": "https://www.threads.net/@ai_in_health/post/4567845",
+    "language": "en"
+  },
+  {
+    "content": "머신러닝 모델 학습 중인데, 오버피팅 문제로 고민이에요. 데이터 증강 기법 적용해봐야겠습니다. #머신러닝 #딥러닝 #AI",
+    "author": "ml_researcher",
+    "author_name": "ML 연구원",
+    "timestamp": "2026-01-26T20:42:15.123456",
+    "likes": 189,
+    "comments": 14,
+    "reposts": 8,
+    "hashtags": [
+      "#머신러닝",
+      "#딥러닝",
+      "#AI"
+    ],
+    "url": "https://www.threads.net/@ml_researcher/post/7891278",
+    "language": "ko"
+  }
+]

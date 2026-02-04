@@ -1,0 +1,47 @@
+{
+  "timestamp": "2026-01-27T19:17:32.072939",
+  "analysis_source": "hogangnono_selenium_page.html",
+  "findings": {
+    "json_data_found": 1,
+    "story_text_occurrences": 14,
+    "story_sections": [
+      {
+        "text": "더보기",
+        "parent_tag": "a",
+        "parent_class": "",
+        "html": "<a href=\"#\" style=\"font-family: Helvetica, AppleSDGothicNeo-Light, nanumgothic, NanumGothic, 나눔고딕, Dotum, 돋움, sans-serif; font-size: 11px; line-height: 19px; margin: 0px 0px 0px 5px; padding: 0px; col"
+      },
+      {
+        "text": "더보기",
+        "parent_tag": "button",
+        "parent_class": "css-u1gryo e1k269ib0",
+        "html": "<button class=\"css-u1gryo e1k269ib0\" data-ga-event=\"apt,btnMoreConvenience\">더보기<svg data-id=\"icon-arrow-bottom-round\" fill=\"none\" height=\"16\" role=\"img\" stroke=\"#6E6E6E\" viewbox=\"0 0 16 16\" width=\"16\""
+      },
+      {
+        "text": "더보기",
+        "parent_tag": "span",
+        "parent_class": "css-qamjgr",
+        "html": "<span class=\"css-qamjgr\">더보기</span>"
+      },
+      {
+        "text": "서대문구 아파트 순위 더보기",
+        "parent_tag": "button",
+        "parent_class": "css-1kmzzg9 ewheu9b0",
+        "html": "<button class=\"css-1kmzzg9 ewheu9b0\">서대문구 아파트 순위 더보기</button>"
+      },
+      {
+        "text": "연희동 아파트 순위 더보기",
+        "parent_tag": "button",
+        "parent_class": "css-1kmzzg9 ewheu9b0",
+        "html": "<button class=\"css-1kmzzg9 ewheu9b0\">연희동 아파트 순위 더보기</button>"
+      }
+    ],
+    "pattern_matches": {
+      "item": 93,
+      "card": 1,
+      "content": 5
+    },
+    "community_links": []
+  },
+  "recommendation": "페이지가 JavaScript로 동적 렌더링됨. 실제 이야기 데이터는 API 호출로 로드되므로, 브라우저 개발자 도구의 Network 탭에서 API 엔드포인트를 확인해야 함."
+}

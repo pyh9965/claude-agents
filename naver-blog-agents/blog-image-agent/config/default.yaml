@@ -1,0 +1,25 @@
+# Blog Image Agent 기본 설정
+
+# AI 모델
+default_model: gemini-2.0-flash
+
+# 이미지 처리
+image_quality: 85
+convert_to_webp: true
+max_image_width: 1200
+max_image_height: 1200
+
+# 캐시
+cache_enabled: true
+cache_dir: .cache/images
+cache_ttl_days: 7
+
+# 수집 우선순위
+collection_priority:
+  - google
+  - stock
+  - nanobanana
+
+# 콘텐츠당 이미지 수
+min_images_per_content: 3
+max_images_per_content: 15

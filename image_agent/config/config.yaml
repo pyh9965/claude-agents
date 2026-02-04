@@ -1,0 +1,50 @@
+# 이미지 수집 에이전트 설정
+
+# 출력 디렉토리
+output:
+  base_dir: "output"
+  images_dir: "output/images"
+  thumbnails_dir: "output/thumbnails"
+  metadata_dir: "output/metadata"
+
+# 웹 크롤러 설정
+crawler:
+  max_concurrent: 5
+  timeout: 30
+  user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+  image_extensions:
+    - ".jpg"
+    - ".jpeg"
+    - ".png"
+    - ".webp"
+  min_image_size: 300  # 최소 이미지 크기 (픽셀)
+
+# PDF 추출 설정
+pdf:
+  dpi: 300
+  image_format: "png"
+  min_width: 300
+  min_height: 300
+
+# Vision 분류 설정 (Google Gemini)
+classifier:
+  model: "gemini-2.0-flash"
+  temperature: 0.3
+  categories:
+    - "floor_plan"  # 평면도
+    - "site_plan"  # 배치도
+    - "aerial_view"  # 조감도
+    - "location_map"  # 위치도
+    - "other"  # 기타
+
+# 썸네일 생성 설정
+thumbnail:
+  width: 1200
+  height: 630
+  quality: 90
+  format: "png"
+
+# API 키 (환경변수 사용 권장)
+api_keys:
+  google: "${GOOGLE_API_KEY}"
+  bannerbear: "${BANNERBEAR_API_KEY}"

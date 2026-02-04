@@ -1,0 +1,385 @@
+{
+  "name": "부동산 이미지 수집 자동화",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        },
+        "triggerTimes": {
+          "item": [
+            {
+              "hour": 9,
+              "minute": 0
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 500]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "url",
+              "value": "https://example.com/property-listing"
+            },
+            {
+              "name": "pdf_path",
+              "value": ""
+            },
+            {
+              "name": "output_dir",
+              "value": "output/images"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-input",
+      "name": "Set Input Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [450, 400]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/collect",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "={{ $json.url }}"
+            },
+            {
+              "name": "output_dir",
+              "value": "={{ $json.output_dir }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "collect-images",
+      "name": "Collect Images API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [650, 400]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/extract-pdf",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "pdf_path",
+              "value": "={{ $json.pdf_path }}"
+            },
+            {
+              "name": "output_dir",
+              "value": "={{ $json.output_dir }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "extract-pdf",
+      "name": "Extract PDF Images API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [650, 600]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.status }}",
+              "operation": "equals",
+              "value2": "success"
+            }
+          ]
+        }
+      },
+      "id": "check-collection-result",
+      "name": "Check Collection Result",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [850, 500]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/classify",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "image_dir",
+              "value": "={{ $json.output_dir || $json.data.output_dir }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "classify-images",
+      "name": "Classify Images API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/generate-thumbnail",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "image_dir",
+              "value": "={{ $json.data.output_dir || $json.output_dir }}"
+            },
+            {
+              "name": "thumbnail_dir",
+              "value": "output/thumbnails"
+            },
+            {
+              "name": "size",
+              "value": "200"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "generate-thumbnails",
+      "name": "Generate Thumbnails API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1250, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.status }}",
+              "operation": "equals",
+              "value2": "success"
+            }
+          ]
+        }
+      },
+      "id": "check-final-result",
+      "name": "Check Final Result",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1450, 400]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/WEBHOOK/URL",
+        "text": "=이미지 수집 작업 성공!\n\n수집된 이미지: {{ $json.data.total_images || 0 }}개\n분류 완료: {{ $json.data.classified_images || 0 }}개\n썸네일 생성: {{ $json.data.thumbnails_created || 0 }}개\n\n출력 디렉토리: {{ $json.data.output_dir || 'output/images' }}",
+        "otherOptions": {}
+      },
+      "id": "slack-success",
+      "name": "Slack Success Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [1650, 300]
+    },
+    {
+      "parameters": {
+        "webhookUri": "https://hooks.slack.com/services/YOUR/WEBHOOK/URL",
+        "text": "=이미지 수집 작업 실패!\n\n에러 메시지: {{ $json.error || $json.message || '알 수 없는 오류' }}\n\n작업 시간: {{ $now.format('YYYY-MM-DD HH:mm:ss') }}",
+        "otherOptions": {}
+      },
+      "id": "slack-error",
+      "name": "Slack Error Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [1650, 500]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "error",
+              "value": "수집 단계에서 실패했습니다"
+            }
+          ]
+        }
+      },
+      "id": "set-collection-error",
+      "name": "Set Collection Error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [1050, 600]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Input Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Input Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Input Data": {
+      "main": [
+        [
+          {
+            "node": "Collect Images API",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Extract PDF Images API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Images API": {
+      "main": [
+        [
+          {
+            "node": "Check Collection Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF Images API": {
+      "main": [
+        [
+          {
+            "node": "Check Collection Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Collection Result": {
+      "main": [
+        [
+          {
+            "node": "Classify Images API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Collection Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Images API": {
+      "main": [
+        [
+          {
+            "node": "Generate Thumbnails API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Thumbnails API": {
+      "main": [
+        [
+          {
+            "node": "Check Final Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Final Result": {
+      "main": [
+        [
+          {
+            "node": "Slack Success Notification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Slack Error Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Collection Error": {
+      "main": [
+        [
+          {
+            "node": "Slack Error Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "real-estate-image-collection"
+}

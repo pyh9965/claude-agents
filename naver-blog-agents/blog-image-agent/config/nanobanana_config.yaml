@@ -1,0 +1,99 @@
+# Nanobanana 3.0 Pro Generator 설정
+
+# API 설정
+api:
+  model: "imagen-3.0-generate-002"  # 나노바나나 3.0 Pro
+  max_retries: 3
+  timeout: 30  # seconds
+  safety_filter_level: "BLOCK_MEDIUM_AND_ABOVE"
+
+# 기본 이미지 설정
+defaults:
+  image_type: "thumbnail"
+  style: "default"
+  brand_color: "blue"
+  max_images: 1
+
+# 이미지 유형별 설정
+image_types:
+  thumbnail:
+    aspect_ratio: "16:9"
+    width: 1024
+    height: 576
+    description: "블로그 포스트 썸네일"
+
+  banner:
+    aspect_ratio: "16:9"
+    width: 1024
+    height: 576
+    description: "블로그 배너 이미지"
+
+  food_photo:
+    aspect_ratio: "4:3"
+    width: 1024
+    height: 768
+    description: "음식 사진"
+
+  infographic:
+    aspect_ratio: "1:1"
+    width: 1024
+    height: 1024
+    description: "인포그래픽 카드"
+
+# 스타일 프리셋
+styles:
+  food:
+    description: "warm, appetizing, professional culinary"
+    recommended_for: ["맛집", "요리", "레시피"]
+
+  travel:
+    description: "vivid, cinematic, breathtaking landscapes"
+    recommended_for: ["여행", "관광", "풍경"]
+
+  lifestyle:
+    description: "natural, candid, modern lifestyle"
+    recommended_for: ["일상", "라이프스타일", "건강"]
+
+  tech:
+    description: "sleek, futuristic, clean technology"
+    recommended_for: ["기술", "IT", "가젯"]
+
+  default:
+    description: "professional, high quality, appealing"
+    recommended_for: ["일반"]
+
+# 프롬프트 템플릿 경로
+templates:
+  thumbnail: "config/prompts/nanobanana_thumbnail.txt"
+  food: "config/prompts/nanobanana_food.txt"
+  infographic: "config/prompts/nanobanana_infographic.txt"
+
+# 네거티브 프롬프트 프리셋
+negative_prompts:
+  common: "blurry, low quality, distorted, watermark, text overlay"
+  food: "unappetizing, cold, stale, processed"
+  people: "people, faces, crowd, person"
+  text: "text, letters, words, captions, labels"
+
+# 출력 설정
+output:
+  format: "png"
+  save_prompt: true  # 프롬프트를 메타데이터에 저장
+  add_attribution: true  # AI Generated 표시
+
+# 품질 설정
+quality:
+  prefer_high_quality: true
+  enable_upscaling: false
+
+# 비용 최적화
+optimization:
+  cache_prompts: false
+  batch_size: 1
+  parallel_requests: 3
+
+# 로깅
+logging:
+  level: "INFO"
+  save_failed_prompts: true
+  log_generation_time: true

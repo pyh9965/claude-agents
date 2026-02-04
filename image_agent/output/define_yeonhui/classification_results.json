@@ -1,0 +1,65 @@
+[
+  {
+    "image_type": "aerial_view",
+    "floor_plan_type": null,
+    "confidence": 0.95,
+    "description": "아파트 단지의 조감도 이미지입니다. 고층 아파트 건물들이 배치되어 있고, 주변에 도로와 녹지가 조성되어 있습니다.",
+    "image_path": "D:\\AI프로그램제작\\agent\\이미지수집agent\\output\\define_yeonhui\\aerial_view.webp"
+  },
+  {
+    "image_type": "floor_plan",
+    "floor_plan_type": "59A",
+    "confidence": 0.95,
+    "description": "59A 형 아파트 단위세대 평면도입니다. 확장형입니다.",
+    "image_path": "D:\\AI프로그램제작\\agent\\이미지수집agent\\output\\define_yeonhui\\floor_59A.webp"
+  },
+  {
+    "image_type": "floor_plan",
+    "floor_plan_type": "59B",
+    "confidence": 0.95,
+    "description": "59B형 단위세대 평면도(확장형)입니다.",
+    "image_path": "D:\\AI프로그램제작\\agent\\이미지수집agent\\output\\define_yeonhui\\floor_59B.webp"
+  },
+  {
+    "image_type": "floor_plan",
+    "floor_plan_type": "75A",
+    "confidence": 0.95,
+    "description": "75A형 단위세대 평면도(확장형) 입니다.",
+    "image_path": "D:\\AI프로그램제작\\agent\\이미지수집agent\\output\\define_yeonhui\\floor_75A.webp"
+  },
+  {
+    "image_type": "floor_plan",
+    "floor_plan_type": "75B",
+    "confidence": 0.95,
+    "description": "75B형 단위세대 확장형 평면도입니다.",
+    "image_path": "D:\\AI프로그램제작\\agent\\이미지수집agent\\output\\define_yeonhui\\floor_75B.webp"
+  },
+  {
+    "image_type": "floor_plan",
+    "floor_plan_type": "84A",
+    "confidence": 0.95,
+    "description": "84A형 아파트 단위세대 평면도",
+    "image_path": "D:\\AI프로그램제작\\agent\\이미지수집agent\\output\\define_yeonhui\\floor_84A.webp"
+  },
+  {
+    "image_type": "floor_plan",
+    "floor_plan_type": "84B",
+    "confidence": 0.95,
+    "description": "This is a floor plan of a unit labeled 84B.",
+    "image_path": "D:\\AI프로그램제작\\agent\\이미지수집agent\\output\\define_yeonhui\\floor_84B.webp"
+  },
+  {
+    "image_type": "other",
+    "floor_plan_type": null,
+    "confidence": 0.95,
+    "description": "SK 드파인 연희 분양 정보 광고 이미지",
+    "image_path": "D:\\AI프로그램제작\\agent\\이미지수집agent\\output\\define_yeonhui\\info_thumbnail.webp"
+  },
+  {
+    "image_type": "site_plan",
+    "floor_plan_type": null,
+    "confidence": 0.95,
+    "description": "아파트 단지 배치도입니다. 건물 배치, 도로, 주차장, 어린이 놀이터, 사회복지시설 등이 표시되어 있습니다. 평면도 유형 정보는 없습니다.",
+    "image_path": "D:\\AI프로그램제작\\agent\\이미지수집agent\\output\\define_yeonhui\\site_plan.webp"
+  }
+]

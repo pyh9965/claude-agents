@@ -1,0 +1,37 @@
+[
+  {
+    "image_path": "D:\\AI프로그램제작\\agent\\이미지수집agent\\output\\images\\cal_clock.png",
+    "image_type": "other",
+    "floor_plan_type": null,
+    "confidence": 0.9,
+    "description": "원으로 보이는 이미지입니다. 흑백 원 그림입니다."
+  },
+  {
+    "image_path": "D:\\AI프로그램제작\\agent\\이미지수집agent\\output\\images\\complex_design.png",
+    "image_type": "other",
+    "floor_plan_type": null,
+    "confidence": 0.9,
+    "description": "3D 모델링 과정을 나타내는 이미지입니다. 상자 모양의 물체에 그림자 추가 과정을 보여줍니다."
+  },
+  {
+    "image_path": "D:\\AI프로그램제작\\agent\\이미지수집agent\\output\\images\\location_img03.jpg",
+    "image_type": "aerial_view",
+    "floor_plan_type": null,
+    "confidence": 0.98,
+    "description": "일몰 시 도시의 조감도입니다. 햇빛이 건물들 사이로 비추고 있습니다."
+  },
+  {
+    "image_path": "D:\\AI프로그램제작\\agent\\이미지수집agent\\output\\images\\pop0115c.jpg",
+    "image_type": "location_map",
+    "floor_plan_type": null,
+    "confidence": 0.9,
+    "description": "모델하우스 주차 불가 안내 및 위치도입니다. 서울역 4호선 12번 출구에서 도보 6분 거리에 위치해 있습니다."
+  },
+  {
+    "image_path": "D:\\AI프로그램제작\\agent\\이미지수집agent\\output\\images\\pop0115d.jpg",
+    "image_type": "aerial_view",
+    "floor_plan_type": null,
+    "confidence": 0.9,
+    "description": "건물 외관 조감도로, 'DE'FINE 연희'의 그랜드 오픈을 알리는 이미지입니다."
+  }
+]

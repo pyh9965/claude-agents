@@ -1,0 +1,13 @@
+# Nanobanana 3.0 Pro Generator Requirements
+
+# Google Generative AI SDK
+google-genai>=0.1.0
+
+# Core dependencies (if not already installed)
+pillow>=10.0.0  # 이미지 처리 (리사이징 등)
+aiohttp>=3.9.0  # 비동기 HTTP 클라이언트
+pyyaml>=6.0.0  # 설정 파일 로드
+
+# Optional dependencies
+pytest>=7.4.0  # 테스트
+pytest-asyncio>=0.21.0  # 비동기 테스트

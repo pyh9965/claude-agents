@@ -1,0 +1,44 @@
+[
+  {
+    "image_path": "D:\\AI프로그램제작\\agent\\이미지수집agent\\output\\unit_images\\unit01.jpg",
+    "image_type": "floor_plan",
+    "floor_plan_type": "59A",
+    "confidence": 0.98,
+    "description": "59A 타입 아파트 평면도이며, 방 3개, 거실, 주방/식당, 욕실 2개 등으로 구성되어 있습니다. 두 가지 확장형 옵션(그라넷 모디쉬, 시에나 브리즈)을 보여줍니다."
+  },
+  {
+    "image_path": "D:\\AI프로그램제작\\agent\\이미지수집agent\\output\\unit_images\\unit02.jpg",
+    "image_type": "floor_plan",
+    "floor_plan_type": "59B",
+    "confidence": 0.95,
+    "description": "59B 타입 아파트 평면도입니다. 침실 3개, 거실, 주방/식당, 욕실 2개, 드레스룸, 다용도실, 발코니로 구성되어 있습니다."
+  },
+  {
+    "image_path": "D:\\AI프로그램제작\\agent\\이미지수집agent\\output\\unit_images\\unit03.jpg",
+    "image_type": "floor_plan",
+    "floor_plan_type": "74A",
+    "confidence": 0.95,
+    "description": "74A 타입 평면도로 방 3개와 거실이 있는 구조를 보여줍니다. 두 가지 스타일의 내부 디자인이 있습니다."
+  },
+  {
+    "image_path": "D:\\AI프로그램제작\\agent\\이미지수집agent\\output\\unit_images\\unit04.jpg",
+    "image_type": "floor_plan",
+    "floor_plan_type": "74B",
+    "confidence": 0.98,
+    "description": "74B 타입의 아파트 평면도로 방 3개, 거실, 주방/식당, 욕실 2개 등으로 구성되어 있습니다. 발코니도 포함되어 있습니다."
+  },
+  {
+    "image_path": "D:\\AI프로그램제작\\agent\\이미지수집agent\\output\\unit_images\\unit05.jpg",
+    "image_type": "floor_plan",
+    "floor_plan_type": "74C",
+    "confidence": 0.98,
+    "description": "74C 타입의 아파트 평면도 이미지입니다. 방 3개, 거실, 주방/식당, 욕실 2개 등으로 구성되어 있습니다."
+  },
+  {
+    "image_path": "D:\\AI프로그램제작\\agent\\이미지수집agent\\output\\unit_images\\unit06.jpg",
+    "image_type": "floor_plan",
+    "floor_plan_type": "75A",
+    "confidence": 0.98,
+    "description": "75A 타입 아파트 평면도 이미지입니다. 방 3개, 욕실 2개, 거실, 주방/식당, 드레스룸, 발코니 구조를 보여줍니다."
+  }
+]

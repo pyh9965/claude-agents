@@ -1,0 +1,63 @@
+# Ralph Progress Log
+Started: 2026-01-31T00:00:00Z
+
+## Codebase Patterns
+- Python 3.10+ with async/await pattern
+- Dataclass-based models for type safety
+- Modular architecture with separate collector/classifier/generator/pipeline
+- Click-based CLI with rich console output
+- Configuration via YAML files
+
+---
+
+## User Stories Overview
+
+| ID | Title | Priority | Status |
+|----|-------|----------|--------|
+| US-001 | Crawl4AI 기본 환경 설정 | 1 | COMPLETED |
+| US-002 | 청약홈 이미지 수집 모듈 구현 | 2 | COMPLETED |
+| US-003 | PDF 이미지 추출 모듈 구현 | 3 | COMPLETED |
+| US-004 | GPT-4 Vision 이미지 분류 모듈 구현 | 4 | COMPLETED |
+| US-005 | 수집-분류 통합 파이프라인 구현 | 5 | COMPLETED |
+| US-006 | Bannerbear 썸네일 생성 모듈 구현 | 6 | COMPLETED |
+| US-007 | n8n 워크플로우 통합 | 7 | COMPLETED |
+| US-008 | CLI 인터페이스 구현 | 8 | COMPLETED |
+
+---
+
+## Session Log
+
+### Session 2026-01-31
+
+**Completed:**
+1. Project structure created (src/, config/, output/, workflows/)
+2. requirements.txt with all dependencies
+3. pyproject.toml with CLI entry point
+4. WebCrawler (Crawl4AI-based) - web_crawler.py
+5. PDFExtractor (PyMuPDF-based) - pdf_extractor.py
+6. VisionClassifier (GPT-4 Vision) - vision_classifier.py
+7. ThumbnailGenerator (Pillow + Bannerbear API) - thumbnail_generator.py
+8. PipelineOrchestrator - orchestrator.py
+9. Click-based CLI - main.py
+10. n8n workflow JSON - n8n_workflow.json
+11. config.yaml with all settings
+
+**Files Created:**
+- src/__init__.py
+- src/collector/__init__.py
+- src/collector/web_crawler.py
+- src/collector/pdf_extractor.py
+- src/classifier/__init__.py
+- src/classifier/vision_classifier.py
+- src/generator/__init__.py
+- src/generator/thumbnail_generator.py
+- src/pipeline/__init__.py
+- src/pipeline/orchestrator.py
+- src/cli/__init__.py
+- src/cli/main.py
+- config/config.yaml
+- workflows/n8n_workflow.json
+- requirements.txt
+- pyproject.toml
+
+---

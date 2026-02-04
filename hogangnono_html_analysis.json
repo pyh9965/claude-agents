@@ -1,0 +1,12 @@
+{
+  "keyword_counts": {
+    "이야기": 5,
+    "리뷰": 1,
+    "review": 1,
+    "커뮤니티": 1
+  },
+  "story_related_classes": [
+    "btn-community"
+  ],
+  "total_classes": 603
+}

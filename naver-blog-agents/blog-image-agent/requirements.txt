@@ -1,0 +1,32 @@
+# Blog Image Collection Agent - Dependencies
+
+# CLI Framework
+click>=8.1.0
+
+# AI Models
+google-genai>=0.4.0
+
+# HTML/Web Parsing
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+
+# HTTP Requests
+httpx>=0.27.0
+requests>=2.31.0
+
+# Environment Variables
+python-dotenv>=1.0.0
+
+# Configuration
+pyyaml>=6.0.0
+
+# Image Processing
+Pillow>=10.0.0
+numpy>=1.24.0
+scipy>=1.11.0
+
+# Async File I/O
+aiofiles>=23.2.0
+
+# Logging and Utilities
+typing-extensions>=4.9.0

@@ -1,0 +1,19 @@
+# 호갱노노 크롤러 필요 패키지
+
+# HTTP 요청
+requests==2.31.0
+
+# HTML 파싱
+beautifulsoup4==4.12.2
+lxml==4.9.3
+
+# Selenium (동적 페이지 크롤링)
+selenium==4.15.2
+webdriver-manager==4.0.1
+
+# 데이터 처리
+pandas==2.1.3
+numpy==1.26.2
+
+# 유틸리티
+python-dateutil==2.8.2

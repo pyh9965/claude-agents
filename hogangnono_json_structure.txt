@@ -1,0 +1,14 @@
+======================================================================
+추출된 JSON 데이터 구조
+======================================================================
+
+이야기 관련 필드: 2개
+
+경로: altState.AptStore.detail.isSubscribedReview
+  타입: bool
+  샘플: False
+
+경로: altState.StoreBoundaryStore.apt.isSubscribedReview
+  타입: bool
+  샘플: False
+
