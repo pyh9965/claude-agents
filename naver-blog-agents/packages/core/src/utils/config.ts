@@ -8,6 +8,23 @@ import type { ContentType, ModelType } from '../types/index.js';
 // 환경 변수 로드
 dotenvConfig();
 
+/** 검색 소스 유형 */
+export type SearchSourceType = 'tavily' | 'google' | 'firecrawl' | 'naver';
+
+/** 리서치 설정 */
+export interface ResearchConfig {
+  /** 리서치 깊이 */
+  depth: 'quick' | 'standard' | 'deep';
+  /** 할루시네이션 방지 모드 */
+  hallucinationMode: 'strict' | 'balanced' | 'permissive';
+  /** 활성화된 검색 소스 */
+  enabledSources: SearchSourceType[];
+  /** 소스당 최대 결과 수 */
+  maxResultsPerSource: number;
+  /** 교차검증 임계값 (0-1) */
+  crossValidationThreshold: number;
+}
+
 /** 앱 설정 인터페이스 */
 export interface AppConfig {
   /** z.ai API 키 */
@@ -16,6 +33,16 @@ export interface AppConfig {
   naverClientId?: string;
   /** 네이버 클라이언트 시크릿 */
   naverClientSecret?: string;
+  /** Tavily API 키 */
+  tavilyApiKey?: string;
+  /** Google 검색 API 키 */
+  googleSearchApiKey?: string;
+  /** Google 검색 엔진 ID */
+  googleSearchEngineId?: string;
+  /** Firecrawl API 키 */
+  firecrawlApiKey?: string;
+  /** Jina API 키 */
+  jinaApiKey?: string;
   /** 출력 디렉토리 */
   outputDir: string;
   /** 기본 콘텐츠 유형 */
@@ -24,6 +51,8 @@ export interface AppConfig {
   logLevel: 'debug' | 'info' | 'warn' | 'error';
   /** 모델 설정 */
   models: ModelConfig;
+  /** 리서치 설정 */
+  researchConfig: ResearchConfig;
 }
 
 /** 모델 설정 */
@@ -47,6 +76,15 @@ export const MODEL_IDS: Record<ModelType, string> = {
   haiku: 'GLM-4.7',   // 빠른 모델 (GLM-4.7 단일 모델)
 };
 
+/** 기본 리서치 설정 */
+const defaultResearchConfig: ResearchConfig = {
+  depth: 'deep',
+  hallucinationMode: 'balanced',
+  enabledSources: ['tavily', 'google', 'firecrawl', 'naver'],
+  maxResultsPerSource: 10,
+  crossValidationThreshold: 0.6,
+};
+
 /** 기본 설정 */
 const defaultConfig: Omit<AppConfig, 'zaiApiKey'> = {
   outputDir: './output',
@@ -62,6 +100,7 @@ const defaultConfig: Omit<AppConfig, 'zaiApiKey'> = {
       seoExpert: 'haiku',
     },
   },
+  researchConfig: defaultResearchConfig,
 };
 
 /** 환경 변수에서 설정 로드 */
@@ -74,17 +113,30 @@ function loadConfig(): AppConfig {
     );
   }
 
+  // 리서치 설정 로드
+  const researchConfig: ResearchConfig = {
+    ...defaultResearchConfig,
+    depth: (process.env.RESEARCH_DEPTH as ResearchConfig['depth']) || defaultResearchConfig.depth,
+    hallucinationMode: (process.env.HALLUCINATION_MODE as ResearchConfig['hallucinationMode']) || defaultResearchConfig.hallucinationMode,
+  };
+
   return {
     ...defaultConfig,
     zaiApiKey,
     naverClientId: process.env.NAVER_CLIENT_ID,
     naverClientSecret: process.env.NAVER_CLIENT_SECRET,
+    tavilyApiKey: process.env.TAVILY_API_KEY,
+    googleSearchApiKey: process.env.GOOGLE_SEARCH_API_KEY,
+    googleSearchEngineId: process.env.GOOGLE_SEARCH_ENGINE_ID,
+    firecrawlApiKey: process.env.FIRECRAWL_API_KEY,
+    jinaApiKey: process.env.JINA_API_KEY,
     outputDir: process.env.OUTPUT_DIR || defaultConfig.outputDir,
     defaultContentType:
       (process.env.DEFAULT_CONTENT_TYPE as ContentType) ||
       defaultConfig.defaultContentType,
     logLevel:
       (process.env.LOG_LEVEL as AppConfig['logLevel']) || defaultConfig.logLevel,
+    researchConfig,
   };
 }
 

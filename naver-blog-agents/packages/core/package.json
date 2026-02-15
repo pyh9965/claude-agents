@@ -1,0 +1,53 @@
+{
+  "name": "@geulto/core",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "글또 코어 - 네이버 블로그 콘텐츠 생성 엔진",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./agents": {
+      "import": "./dist/agents/index.js",
+      "types": "./dist/agents/index.d.ts"
+    },
+    "./workflow": {
+      "import": "./dist/workflow/index.js",
+      "types": "./dist/workflow/index.d.ts"
+    },
+    "./formatters": {
+      "import": "./dist/formatters/index.js",
+      "types": "./dist/formatters/index.d.ts"
+    },
+    "./types": {
+      "import": "./dist/types/index.js",
+      "types": "./dist/types/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rimraf dist",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "openai": "^4.77.0",
+    "better-sqlite3": "^12.6.2",
+    "dotenv": "^16.4.5",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.10.0",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

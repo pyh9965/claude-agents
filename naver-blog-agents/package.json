@@ -1,25 +1,16 @@
 {
-  "name": "geulto",
+  "name": "geulto-monorepo",
   "version": "1.0.0",
-  "type": "module",
+  "private": true,
   "description": "글또 - 네이버 블로그 콘텐츠 자동 생성 AI 에이전트 팀",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "bin": {
-    "geulto": "dist/cli.js"
-  },
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
-    "cli": "ts-node src/cli.ts",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:integration": "vitest run --config vitest.integration.config.ts",
-    "generate": "ts-node src/cli.ts generate",
-    "lint": "eslint src/**/*.ts",
-    "clean": "rimraf dist",
-    "mcp": "node dist/mcp/server.js"
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter @geulto/web dev",
+    "dev:cli": "pnpm --filter @geulto/cli dev",
+    "start": "pnpm --filter @geulto/web start",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "clean": "pnpm -r clean"
   },
   "keywords": [
     "naver",
@@ -31,24 +22,13 @@
   ],
   "author": "",
   "license": "MIT",
-  "dependencies": {
-    "@google/generative-ai": "^0.24.1",
-    "@modelcontextprotocol/sdk": "^1.0.4",
-    "better-sqlite3": "^12.6.2",
-    "chalk": "^5.3.0",
-    "commander": "^12.1.0",
-    "dotenv": "^16.4.5",
-    "zod": "^3.22.4"
-  },
-  "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^22.10.0",
-    "rimraf": "^6.0.1",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
-  },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "dependencies": {
+    "@playwright/test": "^1.58.1",
+    "playwright": "^1.58.1"
   }
 }

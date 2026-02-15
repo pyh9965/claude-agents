@@ -1,5 +1,6 @@
 /**
  * 수빈 (리서처) 에이전트
+ * - 네이버 검색 API 통합 (블로그/뉴스 리서치)
  */
 
 import { BaseAgent, createAgentConfig, type AgentOptions } from './base-agent.js';
@@ -8,11 +9,24 @@ import type {
   ContentPlan,
   ResearchData,
 } from '../types/index.js';
+import { getNaverAPIService, NaverAPIService } from '../services/naver-api.js';
 
 /** 리서치 결과 인터페이스 */
 export interface ResearcherResult {
   agentMessage: string;
   research: ResearchData;
+}
+
+/** 네이버 검색 옵션 */
+export interface NaverSearchOptions {
+  /** 블로그 검색 사용 여부 (기본: true) */
+  searchBlog?: boolean;
+  /** 뉴스 검색 사용 여부 (기본: true) */
+  searchNews?: boolean;
+  /** 검색 결과 수 (기본: 10) */
+  display?: number;
+  /** 정렬 방식 (기본: 'sim' 관련도순) */
+  sort?: 'sim' | 'date';
 }
 
 /** 자금 계획 계산 결과 */
@@ -64,6 +78,8 @@ export function calculateFunding(
  * 리서처 에이전트 클래스
  */
 export class ResearcherAgent extends BaseAgent {
+  private readonly naverAPI = getNaverAPIService();
+
   constructor(options: AgentOptions = {}) {
     const config = createAgentConfig(
       'researcher',
@@ -81,14 +97,86 @@ export class ResearcherAgent extends BaseAgent {
           '팩트체크',
           '경쟁 분석',
           '트렌드 파악',
+          '네이버 검색 리서치',
         ],
         background: '콘텐츠 리서치 5년 경력의 시니어 리서처',
       },
       'sonnet',
-      ['web_search', 'web_fetch']
+      ['web_search', 'web_fetch', 'naver_blog_search', 'naver_news_search']
     );
 
     super(config, options);
+  }
+
+  /**
+   * 네이버 API 사용 가능 여부 확인
+   */
+  isNaverAPIAvailable(): boolean {
+    return this.naverAPI.isAvailable();
+  }
+
+  /**
+   * 네이버 블로그/뉴스 검색으로 리서치 데이터 수집
+   */
+  async searchNaver(
+    query: string,
+    options: NaverSearchOptions = {}
+  ): Promise<{ blogs: unknown[]; news: unknown[]; summary: string }> {
+    const {
+      searchBlog = true,
+      searchNews = true,
+      display = 10,
+      sort = 'sim',
+    } = options;
+
+    const results = {
+      blogs: [] as unknown[],
+      news: [] as unknown[],
+      summary: '',
+    };
+
+    if (!this.naverAPI.isAvailable()) {
+      this.logger.warn('네이버 API 키가 없어 검색을 건너뜁니다.');
+      results.summary = '네이버 API 키가 설정되지 않아 검색을 수행하지 못했습니다.';
+      return results;
+    }
+
+    this.logger.agent(this.config.id, `네이버 검색 시작: "${query}"`);
+
+    try {
+      // 블로그 검색
+      if (searchBlog) {
+        const blogResult = await this.naverAPI.searchBlog({ query, display, sort });
+        results.blogs = blogResult.items.map(item => ({
+          title: NaverAPIService.stripHtml(item.title),
+          link: item.link,
+          description: NaverAPIService.stripHtml(item.description),
+          blogger: item.bloggername,
+          date: item.postdate,
+        }));
+        this.logger.agent(this.config.id, `블로그 검색 완료: ${blogResult.total}건 중 ${results.blogs.length}건 수집`);
+      }
+
+      // 뉴스 검색
+      if (searchNews) {
+        const newsResult = await this.naverAPI.searchNews({ query, display, sort });
+        results.news = newsResult.items.map(item => ({
+          title: NaverAPIService.stripHtml(item.title),
+          link: item.link,
+          description: NaverAPIService.stripHtml(item.description),
+          pubDate: item.pubDate,
+        }));
+        this.logger.agent(this.config.id, `뉴스 검색 완료: ${newsResult.total}건 중 ${results.news.length}건 수집`);
+      }
+
+      results.summary = `네이버 검색 완료: 블로그 ${results.blogs.length}건, 뉴스 ${results.news.length}건`;
+
+    } catch (error) {
+      this.logger.error(`네이버 검색 실패: ${error}`);
+      results.summary = `네이버 검색 중 오류 발생: ${error}`;
+    }
+
+    return results;
   }
 
   /**
@@ -177,13 +265,39 @@ ${JSON.stringify(referenceData, null, 2)}
   }
 
   /**
-   * 리서치 실행
+   * 리서치 실행 (네이버 검색 자동 수행)
    */
   async research(
     plan: ContentPlan,
-    referenceData?: Record<string, unknown>
+    referenceData?: Record<string, unknown>,
+    naverSearchOptions?: NaverSearchOptions
   ): Promise<ResearcherResult> {
-    const message = this.buildResearchMessage(plan, referenceData);
+    // 네이버 검색으로 추가 리서치 수행
+    let naverData: Record<string, unknown> | undefined;
+
+    if (this.naverAPI.isAvailable()) {
+      const searchQuery = plan.targetKeywords[0] || plan.title;
+      const naverResults = await this.searchNaver(searchQuery, naverSearchOptions);
+
+      if (naverResults.blogs.length > 0 || naverResults.news.length > 0) {
+        naverData = {
+          naverBlogResults: naverResults.blogs,
+          naverNewsResults: naverResults.news,
+          naverSearchSummary: naverResults.summary,
+        };
+      }
+    }
+
+    // 참조 데이터와 네이버 검색 결과 병합
+    const mergedReferenceData = {
+      ...referenceData,
+      ...naverData,
+    };
+
+    const message = this.buildResearchMessage(
+      plan,
+      Object.keys(mergedReferenceData).length > 0 ? mergedReferenceData : undefined
+    );
 
     const input: AgentInput = {
       message,
@@ -191,10 +305,13 @@ ${JSON.stringify(referenceData, null, 2)}
         title: plan.title,
         keywords: plan.targetKeywords,
         hasReferenceData: !!referenceData,
+        hasNaverData: !!naverData,
       },
     };
 
-    if (referenceData) {
+    if (naverData) {
+      this.logger.agent(this.config.id, '네이버 검색 데이터 포함하여 리서치 시작');
+    } else if (referenceData) {
       this.logger.agent(this.config.id, '참조 데이터 기반 정보 수집 시작');
     } else {
       this.logger.agent(this.config.id, '정보 수집 시작 (참조 데이터 없음)');

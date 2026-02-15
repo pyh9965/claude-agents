@@ -1,5 +1,5 @@
 /**
- * 기본 에이전트 클래스 (z.ai GLM API 사용)
+ * 기본 에이전트 클래스 (xAI Grok API 사용)
  */
 
 import OpenAI from 'openai';
@@ -126,7 +126,7 @@ export abstract class BaseAgent {
   }
 
   /**
-   * API 호출 실행 (z.ai GLM API)
+   * API 호출 실행 (xAI Grok API)
    */
   protected async callAPI(
     systemPrompt: string,

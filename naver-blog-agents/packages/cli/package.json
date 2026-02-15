@@ -1,0 +1,26 @@
+{
+  "name": "@geulto/cli",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "글또 CLI - 네이버 블로그 콘텐츠 생성 CLI",
+  "main": "dist/cli.js",
+  "bin": {
+    "geulto": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/cli.ts",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@geulto/core": "workspace:*",
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "rimraf": "^6.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  }
+}
