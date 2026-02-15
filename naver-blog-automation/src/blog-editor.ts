@@ -77,21 +77,25 @@ export class NaverBlogEditor {
 
   /** 에디터 로딩 대기 + 팝업 처리 */
   private async waitForEditor(): Promise<void> {
+    console.log(`[Editor] 에디터 감지 시작 (URL: ${this.page.url()})`);
+
     // Step 1: iframe 방식 시도
     try {
       this.frame = this.page.frameLocator('iframe#mainFrame');
       await this.frame.getByRole('button', { name: '발행' }).waitFor({
         state: 'visible',
-        timeout: 20_000,
+        timeout: 30_000,
       });
       this.useIframe = true;
       console.log('[Editor] iframe 에디터 감지됨');
     } catch {
+      console.log('[Editor] iframe 방식 실패, 직접 페이지 시도...');
+
       // Step 2: 직접 페이지 방식 시도
       try {
         await this.page.getByRole('button', { name: '발행' }).waitFor({
           state: 'visible',
-          timeout: 5_000,
+          timeout: 10_000,
         });
         this.useIframe = false;
         console.log('[Editor] 직접 페이지 에디터 감지됨');
@@ -103,18 +107,19 @@ export class NaverBlogEditor {
           { waitUntil: 'domcontentloaded' },
         );
         await pageLoadDelay();
+        await humanDelay(3000, 5000);
 
         try {
           this.frame = this.page.frameLocator('iframe#mainFrame');
           await this.frame.getByRole('button', { name: '발행' }).waitFor({
             state: 'visible',
-            timeout: 15_000,
+            timeout: 30_000,
           });
           this.useIframe = true;
         } catch {
           await this.page.getByRole('button', { name: '발행' }).waitFor({
             state: 'visible',
-            timeout: 10_000,
+            timeout: 15_000,
           });
           this.useIframe = false;
         }

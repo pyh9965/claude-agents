@@ -4,3 +4,4 @@ test-results/
 playwright-report/
 .env
 blob-report/
+chrome-profile-temp/

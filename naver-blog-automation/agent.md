@@ -2,7 +2,7 @@
 
 > **목적**: AI 에이전트가 이 프로젝트를 이어받아 즉시 작업할 수 있도록 모든 컨텍스트를 담은 레퍼런스 문서
 > **최종 업데이트**: 2026-02-15
-> **최종 상태**: 레드향 블로그 게시글 공개 발행 성공 (logNo: 224184578741)
+> **최종 상태**: CDP 모드 자동 포스팅 성공 (logNo: 224184614916)
 
 ---
 
@@ -16,8 +16,9 @@ Playwright를 사용하여 네이버 블로그에 자동으로 글을 작성하�
 - **Runtime**: Node.js (Windows 11)
 - **Test Framework**: Playwright Test (`@playwright/test ^1.49.0`)
 - **Language**: TypeScript
-- **Dependencies**: `dotenv ^16.4.0`
-- **Browser**: Chrome (channel: 'chrome', headed 모드 기본)
+- **Dependencies**: `dotenv ^16.4.0`, `playwright ^1.58.2`, `tsx ^4.21.0`
+- **Browser**: Chrome (CDP 모드 - 전용 디버그 프로필)
+- **CDP 모드**: Chrome DevTools Protocol을 통한 기존 브라우저 제어
 
 ### 1.3 프로젝트 경로
 ```
@@ -45,10 +46,15 @@ naver-blog-automation/
 ├── agent.md                      # ★ 이 파일 - AI 에이전트 레퍼런스
 ├── src/
 │   ├── blog-editor.ts            # ★ 핵심: NaverBlogEditor 클래스 (에디터 조작)
+│   ├── chrome-cdp.ts             # ★ CDP 연결 관리자 (전용 디버그 프로필)
 │   └── human-like.ts             # 봇 감지 우회 유틸리티 (딜레이, 스텔스)
+├── scripts/
+│   ├── setup-chrome.ts           # ★ 초기 설정: 디버그 프로필 생성 + 수동 로그인
+│   ├── post-cdp.ts               # ★ CDP 모드 자동 포스팅
+│   └── launch-chrome.ts          # Chrome 디버깅 모드 실행 유틸리티
 ├── tests/
-│   ├── auth.setup.ts             # 네이버 로그인 & 세션 저장
-│   └── blog-post.spec.ts         # 블로그 포스팅 테스트 (실제 발행)
+│   ├── auth.setup.ts             # 네이버 로그인 & 세션 저장 (레거시)
+│   └── blog-post.spec.ts         # 블로그 포스팅 테스트 (레거시)
 ├── playwright/
 │   └── .auth/
 │       └── naver.json            # 저장된 로그인 세션 (gitignore)
@@ -60,7 +66,17 @@ naver-blog-automation/
 
 ## 3. 실행 방법
 
-### 3.1 Windows 환경 주의사항
+### 3.1 CDP 모드 실행 (권장)
+
+```bash
+# 1. 최초 1회: 디버그 프로필 생성 + 네이버 수동 로그인
+npm run chrome:setup
+
+# 2. 자동 포스팅 (이후 반복 실행 가능)
+npm run post:cdp
+```
+
+### 3.2 Windows 환경 주의사항
 
 **npm PATH 문제**: Windows Git Bash에서 npm이 PATH에 없을 수 있음.
 ```bash
@@ -709,20 +725,114 @@ npx playwright test tests/blog-post.spec.ts --headed --trace on
 - [ ] 에러 발생 시 자동 재시도 로직
 - [ ] 여러 글 연속 포스팅 기능
 - [ ] CLI 인터페이스 추가 (인자로 제목/내용 전달)
+- [ ] setup-chrome.ts를 non-interactive 방식으로 개선
 
 ---
 
-## 15. 성공한 발행 이력
+## 15. CDP (Chrome DevTools Protocol) 모드
 
-| 날짜 | 제목 | logNo | 공개 | 상태 |
+### 15.1 배경 및 필요성
+
+Playwright의 기본 Chromium 브라우저는 네이버에서 "등록되지 않은 브라우저"로 인식됨.
+실제 사용자의 Chrome 브라우저를 CDP로 제어하면 이 문제를 해결할 수 있음.
+
+### 15.2 Chrome 136+ 보안 정책 (핵심)
+
+**Chrome 136부터 기본 프로필(User Data)로는 `--remote-debugging-port` 사용이 차단됨.**
+
+- 참고: https://developer.chrome.com/blog/remote-debugging-port
+- 원인: 쿠키 탈취 방지를 위한 Google 보안 강화
+- 해결: **별도의 전용 디버그 프로필** 사용 필수
+
+```
+❌ 기본 프로필: C:\Users\pyh99\AppData\Local\Google\Chrome\User Data
+   → --remote-debugging-port 무시됨 (Chrome 136+)
+
+❌ Junction/Symlink 우회:
+   → Chrome 시작은 되지만 DPAPI 암호화 키가 경로에 종속
+   → os_crypt: Failed to decrypt 에러 → 쿠키 복호화 실패
+
+✅ 전용 디버그 프로필: C:\Users\pyh99\.chrome-debug-profile
+   → 별도 경로이므로 remote-debugging-port 정상 동작
+   → 최초 1회 수동 로그인 후 쿠키 영구 저장
+```
+
+### 15.3 프로필 구조
+
+```
+~/.chrome-debug-profile/        # 전용 디버그 프로필 (자동 생성)
+├── Default/                    # Chrome 기본 프로필 데이터
+│   ├── Cookies                 # 네이버 로그인 쿠키 (영구)
+│   ├── Local Storage/          # 로컬 스토리지
+│   └── ...
+└── Local State                 # Chrome 설정
+```
+
+### 15.4 실행 흐름
+
+```
+1. npm run chrome:setup (최초 1회)
+   → Chrome 시작 (디버그 프로필 + 포트 9222)
+   → 네이버 로그인 페이지 자동 열림
+   → 사용자가 수동 로그인
+   → 쿠키가 디버그 프로필에 저장됨
+
+2. npm run post:cdp (이후 반복)
+   → Chrome 시작 (디버그 프로필 + 포트 9222)
+   → Playwright가 CDP로 연결
+   → 저장된 쿠키로 자동 인증
+   → 블로그 에디터 접근 → 포스팅 → 발행
+```
+
+### 15.5 ChromeCDP 클래스 (src/chrome-cdp.ts)
+
+```typescript
+const cdp = new ChromeCDP({
+  // chromePath: 자동 감지 (C:\Program Files\Google\Chrome\...)
+  // userDataDir: 기본 ~/.chrome-debug-profile
+  debugPort: 9222,          // CDP 포트
+  killExisting: true,       // 기존 Chrome 종료 후 시작
+  launchWaitMs: 15000,      // Chrome 시작 대기
+});
+
+// 프로필 상태 확인
+cdp.isProfileSetup();       // boolean
+cdp.getProfilePath();       // string
+
+// 연결/해제
+const { browser, context, page } = await cdp.connect();
+await cdp.disconnect();     // Chrome 유지
+await cdp.close();          // Chrome 종료
+```
+
+### 15.6 npm 스크립트
+
+| 스크립트 | 명령어 | 설명 |
+|---------|--------|------|
+| `chrome:setup` | `npx tsx scripts/setup-chrome.ts` | 디버그 프로필 생성 + 수동 로그인 |
+| `post:cdp` | `npx tsx scripts/post-cdp.ts` | CDP 모드 자동 포스팅 |
+| `chrome:debug` | `npx tsx scripts/launch-chrome.ts` | Chrome 디버깅 모드 실행 |
+
+---
+
+## 16. 성공한 발행 이력
+
+| 날짜 | 제목 | logNo | 모드 | 상태 |
 |------|------|-------|------|------|
-| 2026-02-15 | 레드향 제철 시기와 고르는 법, 귤과 뭐가 다를까? | 224184578741 | 전체공개 | 성공 |
+| 2026-02-15 | 레드향 제철 시기와 고르는 법... | 224184578741 | Playwright Test | 성공 |
+| 2026-02-15 | 레드향 제철 시기와 고르는 법... | 224184614916 | CDP 모드 | 성공 |
 
 ---
 
-## 16. 빠른 시작 가이드 (AI용)
+## 17. 빠른 시작 가이드 (AI용)
 
-### 새 글 발행하기
+### CDP 모드로 새 글 발행하기 (권장)
+
+1. `scripts/post-cdp.ts`의 `postData` 객체 수정
+2. 디버그 프로필이 없으면 `npm run chrome:setup` 실행 (최초 1회)
+3. `npm run post:cdp` 실행
+
+### 레거시 모드로 새 글 발행하기
 
 1. `tests/blog-post.spec.ts`의 `postData` 객체 수정
 2. Windows 환경이면 npm PATH 확인
@@ -762,14 +872,20 @@ await humanDelay(500, 1000);
 
 - **OS**: Windows 11 Home 10.0.26200
 - **Node.js**: `/c/Program Files/nodejs/` (Git Bash PATH 주의)
-- **Playwright**: @playwright/test ^1.49.0
-- **Browser**: Chrome (channel: 'chrome')
+- **Playwright**: @playwright/test ^1.49.0, playwright ^1.58.2
+- **tsx**: ^4.21.0 (TypeScript 스크립트 실행)
+- **Browser**: Chrome 144 (CDP 모드 - 전용 디버그 프로필)
+- **디버그 프로필**: `C:\Users\pyh99\.chrome-debug-profile`
 - **프로젝트 경로**: `D:\ai_program\agent\naver-blog-automation\`
-- **Git**: main 브랜치, clean 상태
+- **Git**: main 브랜치
 
 ---
 
 > **이 문서를 읽는 AI에게**: 이 프로젝트는 네이버 블로그 자동 포스팅 도구입니다.
-> 가장 중요한 것은 (1) iframe 내부 에디터 구조, (2) 발행 버튼 4개 중 마지막 클릭,
-> (3) label로 라디오 클릭, (4) 봇 감지 우회를 위한 딜레이입니다.
+> 가장 중요한 것은:
+> (1) CDP 모드 사용 (전용 디버그 프로필 필수, Chrome 136+ 보안 정책)
+> (2) iframe 내부 에디터 구조 (직접 페이지 모드도 있음)
+> (3) 발행 버튼 4개 중 마지막 클릭
+> (4) label로 라디오 클릭
+> (5) 봇 감지 우회를 위한 딜레이
 > 코드 수정 시 반드시 위 사항을 확인하고, 발행 후 URL 변화로 성공 여부를 검증하세요.

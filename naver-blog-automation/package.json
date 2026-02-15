@@ -1,18 +1,23 @@
 {
   "name": "naver-blog-automation",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Playwright 기반 네이버 블로그 자동 포스팅",
   "scripts": {
     "login": "npx playwright test tests/auth.setup.ts --headed",
     "post": "npx playwright test tests/blog-post.spec.ts --headed",
     "post:headless": "npx playwright test tests/blog-post.spec.ts",
+    "post:cdp": "npx tsx scripts/post-cdp.ts",
+    "chrome:setup": "npx tsx scripts/setup-chrome.ts",
+    "chrome:debug": "npx tsx scripts/launch-chrome.ts",
     "codegen": "npx playwright codegen https://blog.naver.com --load-storage=playwright/.auth/naver.json",
     "debug": "npx playwright test tests/blog-post.spec.ts --debug"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.0"
+    "@playwright/test": "^1.49.0",
+    "tsx": "^4.21.0"
   },
   "dependencies": {
-    "dotenv": "^16.4.0"
+    "dotenv": "^16.4.0",
+    "playwright": "^1.58.2"
   }
 }
