@@ -11,6 +11,7 @@
  *   - iframe vs 직접 페이지 구조 분기
  */
 import { type Page, type FrameLocator, type Locator, expect } from '@playwright/test';
+import { spawnSync } from 'child_process';
 import {
   humanDelay,
   humanTypeToLocator,
@@ -30,6 +31,20 @@ export interface BlogPostData {
   scheduledTime?: string;  // 예약 발행 시간 (선택)
 }
 
+/** 본문 중간에 이미지를 삽입하는 인터리브 포스팅 데이터 */
+export interface InterleavedSection {
+  content: string;         // 이 섹션의 본문 텍스트
+  image?: string;          // 이 섹션 뒤에 삽입할 이미지 경로 (선택)
+}
+
+export interface InterleavedPostData {
+  title: string;
+  sections: InterleavedSection[];  // 본문 + 이미지가 번갈아 배치
+  tags?: string[];
+  category?: string;
+  isPublic?: boolean;
+}
+
 export class NaverBlogEditor {
   readonly page: Page;
   readonly blogId: string;
@@ -39,6 +54,25 @@ export class NaverBlogEditor {
   constructor(page: Page, blogId: string) {
     this.page = page;
     this.blogId = blogId;
+  }
+
+  // ─── OS 레벨 파일 다이얼로그 닫기 ───
+
+  /** Windows "열기" 파일 선택 다이얼로그를 PowerShell로 강제 닫기 */
+  private closeNativeFileDialogs(): void {
+    try {
+      spawnSync(
+        'powershell',
+        [
+          '-NonInteractive',
+          '-Command',
+          '$s = New-Object -ComObject WScript.Shell; ' +
+          'if ($s.AppActivate("열기")) { Start-Sleep -Milliseconds 300; $s.SendKeys("{ESC}") }; ' +
+          'if ($s.AppActivate("Open")) { Start-Sleep -Milliseconds 300; $s.SendKeys("{ESC}") }',
+        ],
+        { timeout: 5000, stdio: 'ignore' },
+      );
+    } catch { /* 다이얼로그 없음 - 무시 */ }
   }
 
   // ─── 내부 헬퍼: iframe / page 자동 분기 ───
@@ -140,6 +174,56 @@ export class NaverBlogEditor {
   private async dismissAllPopups(): Promise<void> {
     await this.dismissDraftDialog();
     await this.dismissEventPopup();
+    await this.dismissOverlayPopups();
+  }
+
+  /** 오버레이 팝업 닫기 (이미지 업로드 후 남는 레이어 등) */
+  private async dismissOverlayPopups(): Promise<void> {
+    // layer_popup_wrap 계열 팝업 닫기
+    const overlaySelectors = [
+      '[class*="layer_popup_wrap"] button[class*="close"]',
+      '[class*="layer_popup_wrap"] button[class*="Close"]',
+      '[class*="layer_popup_wrap"] .btn_close',
+      '[class*="layer_popup_wrap"] button:has-text("닫기")',
+      '[class*="layer_popup_wrap"] button:has-text("취소")',
+      '[class*="layer_popup_wrap"] button:has-text("확인")',
+      // 일반 오버레이 닫기
+      '.dimmed + [class*="popup"] button[class*="close"]',
+      '[class*="LayerPopup"] button[class*="close"]',
+    ];
+
+    for (const sel of overlaySelectors) {
+      try {
+        // 페이지 레벨에서 먼저 시도
+        const btn = this.page.locator(sel).first();
+        if (await btn.isVisible({ timeout: 1_000 }).catch(() => false)) {
+          await btn.click();
+          await humanDelay(300, 600);
+          console.log(`[Editor] 오버레이 팝업 닫기: ${sel}`);
+          return;
+        }
+      } catch { /* continue */ }
+      try {
+        // iframe 내부에서도 시도
+        const btn = this.loc(sel).first();
+        if (await btn.isVisible({ timeout: 1_000 }).catch(() => false)) {
+          await btn.click();
+          await humanDelay(300, 600);
+          console.log(`[Editor] 오버레이 팝업 닫기 (iframe): ${sel}`);
+          return;
+        }
+      } catch { /* continue */ }
+    }
+
+    // ESC 키로 폴백 시도
+    try {
+      const overlay = this.page.locator('[class*="layer_popup_wrap"]').first();
+      if (await overlay.isVisible({ timeout: 1_000 }).catch(() => false)) {
+        await this.page.keyboard.press('Escape');
+        await humanDelay(500, 1000);
+        console.log('[Editor] ESC로 오버레이 닫기 시도');
+      }
+    } catch { /* no overlay */ }
   }
 
   /**
@@ -362,49 +446,222 @@ export class NaverBlogEditor {
     console.log(`[Editor] 이미지 ${imagePaths.length}개 업로드`);
 
     for (const imagePath of imagePaths) {
-      // "사진 추가" 버튼 클릭
-      const imageBtn = this.getByRole('button', { name: /사진/ })
-        .or(this.loc('button.se-image-toolbar-button'))
-        .or(this.loc('button[data-name="image"]'))
-        .first();
+      let uploaded = false;
 
-      if (await imageBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
-        await imageBtn.click();
-        await humanDelay(500, 1000);
-      }
+      // 이전 이미지 업로드 후 남은 오버레이 팝업 닫기
+      await this.dismissOverlayPopups();
+      await humanDelay(500, 1000);
 
-      // 파일 선택 다이얼로그 처리
-      const fileChooserPromise = this.page.waitForEvent('filechooser', { timeout: 10_000 });
-
-      // "내 PC" 버튼 클릭
-      const pcUpload = this.getByRole('button', { name: /내 PC|PC/ })
-        .or(this.loc('label:has-text("내 PC")'))
-        .first();
-      if (await pcUpload.isVisible({ timeout: 3_000 }).catch(() => false)) {
-        await pcUpload.click();
-      }
-
+      // ── 방법 1: 이미지 컴포넌트 버튼 → 내 PC → 파일 선택 ──
+      console.log('[Editor] 이미지 업로드 방법 1: 툴바 버튼');
       try {
-        const fileChooser = await fileChooserPromise;
-        await fileChooser.setFiles(imagePath);
-        console.log(`  - 업로드: ${imagePath}`);
-      } catch {
-        const fileInput = this.loc('input[type="file"][accept*="image"]').first();
-        if (await fileInput.count() > 0) {
-          await fileInput.setInputFiles(imagePath);
-          console.log(`  - 직접 업로드: ${imagePath}`);
-        } else {
-          console.warn(`  - 업로드 실패: ${imagePath}`);
+        // SmartEditor ONE 이미지 버튼 찾기
+        const imageBtnSelectors = [
+          'button.se-image-toolbar-button',
+          'button[data-name="image"]',
+          'button[data-command="image"]',
+          'button.se-toolbar-button-image',
+        ];
+
+        let imageBtnClicked = false;
+        for (const sel of imageBtnSelectors) {
+          const btn = this.loc(sel).first();
+          if (await btn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+            await btn.click({ timeout: 5_000 });
+            await humanDelay(800, 1500);
+            imageBtnClicked = true;
+            console.log(`[Editor] 이미지 버튼 클릭: ${sel}`);
+            break;
+          }
+        }
+
+        // 이미지 버튼을 못 찾으면 "사진" 텍스트 버튼 시도
+        if (!imageBtnClicked) {
+          const photoBtn = this.getByRole('button', { name: /사진|이미지|Image|Photo/ }).first();
+          if (await photoBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+            await photoBtn.click();
+            await humanDelay(800, 1500);
+            imageBtnClicked = true;
+            console.log('[Editor] 사진/이미지 텍스트 버튼 클릭');
+          }
+        }
+
+        if (imageBtnClicked) {
+          // 파일 선택 이벤트 대기 + "내 PC" 클릭
+          // .catch로 unhandled rejection 방지 (방법 2로 넘어갈 경우 이 promise는 버려짐)
+          const fileChooserPromise = this.page.waitForEvent('filechooser', { timeout: 10_000 })
+            .catch(() => null);
+
+          const pcSelectors = [
+            'label:has-text("내 PC")',
+            'button:has-text("내 PC")',
+            'a:has-text("내 PC")',
+            'span:has-text("내 PC")',
+          ];
+
+          let pcClicked = false;
+          for (const sel of pcSelectors) {
+            const pcBtn = this.loc(sel).first();
+            if (await pcBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+              await pcBtn.click();
+              pcClicked = true;
+              console.log(`[Editor] "내 PC" 클릭: ${sel}`);
+              break;
+            }
+          }
+
+          // "내 PC"를 못 찾으면 페이지 레벨에서도 시도 (iframe 밖일 수 있음)
+          if (!pcClicked && this.useIframe) {
+            for (const sel of pcSelectors) {
+              const pcBtn = this.page.locator(sel).first();
+              if (await pcBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+                await pcBtn.click();
+                pcClicked = true;
+                console.log(`[Editor] "내 PC" 클릭 (페이지): ${sel}`);
+                break;
+              }
+            }
+          }
+
+          if (pcClicked) {
+            const fileChooser = await fileChooserPromise;
+            if (fileChooser) {
+              await fileChooser.setFiles(imagePath);
+              uploaded = true;
+              console.log(`[Editor] 파일 선택 완료: ${imagePath}`);
+            } else {
+              // 파일 다이얼로그가 OS 레벨에서 열렸지만 인터셉트 실패 → ESC로 닫기
+              await this.page.keyboard.press('Escape');
+              await humanDelay(300, 500);
+              console.log('[Editor] 파일 다이얼로그 인터셉트 실패 → ESC로 닫음');
+            }
+          }
+        }
+      } catch (e: any) {
+        console.log(`[Editor] 방법 1 실패: ${e.message}`);
+        await this.page.keyboard.press('Escape').catch(() => {});
+        await humanDelay(300, 500);
+      }
+
+      // Method 1 완료 후 OS 파일 다이얼로그 강제 닫기
+      this.closeNativeFileDialogs();
+      await humanDelay(300, 500);
+
+      // ── 방법 2: hidden input[type="file"] 직접 사용 ──
+      if (!uploaded) {
+        console.log('[Editor] 이미지 업로드 방법 2: hidden file input');
+        try {
+          // 페이지 전체에서 file input 검색 (hidden 포함)
+          const fileInputSelectors = [
+            'input[type="file"][accept*="image"]',
+            'input[type="file"][accept*="png"]',
+            'input[type="file"][accept*="jpg"]',
+            'input[type="file"]',
+          ];
+
+          for (const sel of fileInputSelectors) {
+            // iframe 내부
+            const iframeInput = this.loc(sel).first();
+            if (await iframeInput.count() > 0) {
+              await iframeInput.setInputFiles(imagePath);
+              uploaded = true;
+              console.log(`[Editor] hidden input 업로드 성공 (in editor): ${sel}`);
+              break;
+            }
+            // 페이지 전체
+            const pageInput = this.page.locator(sel).first();
+            if (await pageInput.count() > 0) {
+              await pageInput.setInputFiles(imagePath);
+              uploaded = true;
+              console.log(`[Editor] hidden input 업로드 성공 (in page): ${sel}`);
+              break;
+            }
+          }
+        } catch (e: any) {
+          console.log(`[Editor] 방법 2 실패: ${e.message}`);
         }
       }
 
-      await humanDelay(2000, 4000);
+      // ── 방법 3: 에디터 본문에 이미지 드래그앤드롭 시뮬레이션 ──
+      if (!uploaded) {
+        console.log('[Editor] 이미지 업로드 방법 3: 드래그앤드롭');
+        try {
+          const fs = await import('fs');
+          const fileBuffer = fs.readFileSync(imagePath);
+          const contentArea = this.loc('.se-component.se-text .se-text-paragraph')
+            .or(this.loc('.se-main-container'))
+            .first();
 
-      // 등록/삽입/확인 버튼
-      const insertBtn = this.getByRole('button', { name: /등록|삽입/ }).first();
-      if (await insertBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
-        await insertBtn.click();
+          if (await contentArea.isVisible({ timeout: 3_000 }).catch(() => false)) {
+            // DataTransfer를 시뮬레이션하여 drop 이벤트 발생
+            await contentArea.evaluate(async (el, data) => {
+              const uint8 = new Uint8Array(data);
+              const blob = new Blob([uint8], { type: 'image/png' });
+              const file = new File([blob], 'blog-thumbnail.png', { type: 'image/png' });
+              const dt = new DataTransfer();
+              dt.items.add(file);
+
+              const dropEvent = new DragEvent('drop', {
+                bubbles: true,
+                cancelable: true,
+                dataTransfer: dt,
+              });
+              el.dispatchEvent(dropEvent);
+            }, Array.from(fileBuffer));
+
+            await humanDelay(3000, 5000);
+            uploaded = true;
+            console.log('[Editor] 드래그앤드롭 이미지 삽입 시도');
+          }
+        } catch (e: any) {
+          console.log(`[Editor] 방법 3 실패: ${e.message}`);
+        }
+      }
+
+      if (uploaded) {
+        await humanDelay(3000, 5000);
+
+        // 등록/삽입/확인 버튼 (이미지 업로드 확인 패널)
+        const confirmSelectors = [
+          'button:has-text("등록")',
+          'button:has-text("삽입")',
+          'button:has-text("확인")',
+          'button:has-text("첨부")',
+        ];
+        for (const sel of confirmSelectors) {
+          const btn = this.loc(sel).first();
+          if (await btn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+            await btn.click();
+            await humanDelay(1000, 2000);
+            console.log(`[Editor] 이미지 확인 버튼 클릭: ${sel}`);
+            break;
+          }
+        }
+
+        // 이미지 업로드 후 남는 오버레이 팝업 닫기 (다음 이미지 업로드를 위해)
         await humanDelay(1000, 2000);
+        await this.dismissOverlayPopups();
+
+        console.log(`[Editor] 이미지 업로드 완료: ${imagePath}`);
+      } else {
+        // 디버그: 페이지 내 모든 버튼과 input 정보 출력
+        const debugInfo = await this.page.evaluate(() => {
+          const buttons = Array.from(document.querySelectorAll('button')).map(b => ({
+            text: b.textContent?.trim()?.substring(0, 30),
+            class: b.className?.substring(0, 50),
+            'data-name': b.getAttribute('data-name'),
+          })).filter(b => b.text || b['data-name']);
+          const inputs = Array.from(document.querySelectorAll('input[type="file"]')).map(i => ({
+            accept: i.getAttribute('accept'),
+            class: i.className,
+            hidden: !i.offsetParent,
+          }));
+          return { buttons: buttons.slice(0, 15), fileInputs: inputs };
+        });
+        console.log('[Editor] 디버그 - 버튼 목록:', JSON.stringify(debugInfo.buttons, null, 2));
+        console.log('[Editor] 디버그 - file input:', JSON.stringify(debugInfo.fileInputs, null, 2));
+        await this.page.screenshot({ path: 'test-results/debug-image-upload-failed.png', fullPage: true });
+        console.warn(`[Editor] 이미지 업로드 실패: ${imagePath}`);
       }
     }
   }
@@ -528,6 +785,11 @@ export class NaverBlogEditor {
 
   async publish(isPublic: boolean = true, tags?: string[], category?: string): Promise<void> {
     console.log(`[Editor] 발행 (${isPublic ? '공개' : '비공개'})...`);
+
+    // 0. 발행 전 오버레이 팝업 닫기 + OS 파일 다이얼로그 닫기
+    await this.dismissOverlayPopups();
+    this.closeNativeFileDialogs();
+    await humanDelay(500, 800);
 
     // 1. 발행 버튼 클릭 → 발행 설정 패널 열기
     const publishBtn = this.getByRole('button', { name: '발행' }).first();
@@ -672,5 +934,94 @@ export class NaverBlogEditor {
     console.log('========================================');
     console.log('[Blog] 포스팅 완료!');
     console.log('========================================');
+  }
+
+  // ─── 인터리브 포스팅 (본문 중간에 이미지 삽입) ───
+
+  /**
+   * 본문 중간중간에 이미지를 삽입하는 포스팅
+   *
+   * sections 배열의 각 요소:
+   *   { content: "본문 텍스트", image: "이미지경로(선택)" }
+   *
+   * 예시:
+   *   sections: [
+   *     { content: "인트로...", image: "img1.png" },
+   *     { content: "중간 내용...", image: "img2.png" },
+   *     { content: "마무리..." },
+   *   ]
+   *
+   * → 인트로 → 이미지1 → 중간 내용 → 이미지2 → 마무리
+   */
+  async createInterleavedPost(data: InterleavedPostData): Promise<void> {
+    console.log('========================================');
+    console.log('[Blog] 인터리브 포스팅 시작');
+    console.log(`[Blog] 섹션 ${data.sections.length}개`);
+    console.log('========================================');
+
+    // 1. 에디터 이동
+    await this.navigateToEditor();
+
+    // 2. 제목 입력
+    await this.writeTitle(data.title);
+
+    // 3. 섹션별로 본문 + 이미지 교차 삽입
+    for (let i = 0; i < data.sections.length; i++) {
+      const section = data.sections[i];
+      console.log(`[Editor] 섹션 ${i + 1}/${data.sections.length} 입력`);
+
+      // 본문 입력
+      if (section.content.trim()) {
+        await this.writeContentAppend(section.content);
+      }
+
+      // 이미지 삽입 (있는 경우)
+      if (section.image) {
+        console.log(`[Editor] 섹션 ${i + 1} 이미지 삽입: ${section.image}`);
+        await this.uploadImages([section.image]);
+        // 이미지 삽입 후 커서를 아래로 이동 (다음 텍스트가 이미지 아래에 오도록)
+        await this.page.keyboard.press('End');
+        await humanDelay(300, 500);
+        await this.page.keyboard.press('Enter');
+        await humanDelay(300, 500);
+      }
+    }
+
+    // 4. 발행
+    await this.publish(
+      data.isPublic ?? true,
+      data.tags,
+      data.category,
+    );
+
+    console.log('========================================');
+    console.log('[Blog] 인터리브 포스팅 완료!');
+    console.log('========================================');
+  }
+
+  /** 에디터 본문 끝에 텍스트 추가 (기존 내용 유지) */
+  async writeContentAppend(content: string): Promise<void> {
+    console.log(`[Editor] 본문 추가 입력 (${content.length}자)`);
+
+    // 본문 영역의 마지막 위치 찾기
+    const contentLocator = this.loc('.se-component.se-text .se-text-paragraph')
+      .or(this.loc('.se-component.se-text'))
+      .or(this.loc('.se-main-container'))
+      .first();
+
+    // 마지막 텍스트 영역 클릭 → End 키로 끝으로 이동
+    await contentLocator.click();
+    await humanDelay(200, 400);
+    await this.page.keyboard.press('Control+End');
+    await humanDelay(200, 400);
+
+    // 클립보드를 통한 빠른 입력
+    await this.page.evaluate((text) => {
+      navigator.clipboard.writeText(text);
+    }, content);
+    await humanDelay(300, 500);
+
+    await this.page.keyboard.press('Control+V');
+    await humanDelay(1000, 2000);
   }
 }

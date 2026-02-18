@@ -12,7 +12,9 @@
  *   1. Chrome 브라우저가 열립니다
  *   2. 네이버(naver.com)에 직접 로그인하세요
  *   3. 로그인 완료 후 이 터미널에서 Enter를 누르세요
- *   4. 로그인 상태가 확인되면 설정 완료!
+ *   4. ChatGPT(chatgpt.com)에 로그인하세요
+ *   5. 로그인 완료 후 Enter를 누르세요
+ *   6. 모든 로그인 상태가 확인되면 설정 완료!
  */
 import { ChromeCDP } from '../src/chrome-cdp';
 import * as readline from 'readline';
@@ -145,21 +147,106 @@ async function main() {
     const finalUrl = page.url();
     const blogAccessOk = !finalUrl.includes('nidlogin') && !finalUrl.includes('login');
 
-    console.log('');
-    console.log('========================================');
     if (blogAccessOk) {
-      console.log('[Setup] 설정 완료!');
-      console.log('[Setup] 네이버 로그인: 확인');
-      console.log('[Setup] 블로그 글쓰기: 접근 가능');
-      console.log('');
-      console.log('[Setup] 이제 npm run post:cdp 로 자동 포스팅할 수 있습니다!');
+      console.log('[Setup] 네이버 블로그 글쓰기: 접근 가능');
     } else {
-      console.log('[Setup] 네이버 로그인: 확인');
-      console.log('[Setup] 블로그 글쓰기: 접근 불가 (추가 인증 필요)');
-      console.log('');
+      console.log('[Setup] 네이버 블로그 글쓰기: 접근 불가 (추가 인증 필요)');
       console.log('[Setup] Chrome에서 blog.naver.com에 직접 접근하여');
       console.log('[Setup] 글쓰기 페이지까지 이동해보세요.');
-      console.log('[Setup] 그 후 다시 npm run chrome:setup 을 실행해주세요.');
+    }
+
+    // ── 6. ChatGPT 로그인 설정 ──
+    console.log('');
+    console.log('========================================');
+    console.log('[Setup] ChatGPT 로그인 설정');
+    console.log('========================================');
+
+    await page.goto('https://chatgpt.com', {
+      waitUntil: 'domcontentloaded',
+    });
+    await new Promise(r => setTimeout(r, 5000));
+
+    // ChatGPT 로그인 상태 확인 (로그인 버튼 유무로 판별)
+    const chatgptLoginBtn = await page
+      .locator('button:has-text("Log in"), a:has-text("Log in"), button:has-text("로그인")')
+      .first()
+      .isVisible({ timeout: 8_000 })
+      .catch(() => false);
+
+    let chatgptOk = !chatgptLoginBtn;
+
+    if (!chatgptLoginBtn) {
+      // 추가 확인: 프롬프트 입력란 존재 여부
+      const hasPrompt = await page
+        .locator('#prompt-textarea, [data-testid="prompt-textarea"]')
+        .first()
+        .isVisible({ timeout: 5_000 })
+        .catch(() => false);
+      chatgptOk = hasPrompt;
+    }
+
+    if (chatgptOk) {
+      console.log('[Setup] ChatGPT 이미 로그인되어 있습니다!');
+    } else {
+      console.log('[Setup] ChatGPT 로그인이 필요합니다.');
+      console.log('');
+      console.log('  1. Chrome 브라우저에서 chatgpt.com 페이지가 열려있습니다');
+      console.log('  2. "Log in" 버튼을 클릭하여 로그인하세요');
+      console.log('  3. Google/Microsoft/Apple 계정으로 로그인 가능');
+      console.log('  4. 로그인 완료 후 아래에서 Enter를 눌러주세요');
+      console.log('');
+
+      await waitForEnter('ChatGPT 로그인 완료 후 Enter를 눌러주세요...');
+
+      // 로그인 재확인
+      await page.goto('https://chatgpt.com', {
+        waitUntil: 'domcontentloaded',
+      });
+      await new Promise(r => setTimeout(r, 5000));
+
+      const reLoginBtn = await page
+        .locator('button:has-text("Log in"), a:has-text("Log in"), button:has-text("로그인")')
+        .first()
+        .isVisible({ timeout: 5_000 })
+        .catch(() => false);
+
+      chatgptOk = !reLoginBtn && await page
+        .locator('#prompt-textarea, [data-testid="prompt-textarea"]')
+        .first()
+        .isVisible({ timeout: 8_000 })
+        .catch(() => false);
+
+      if (chatgptOk) {
+        console.log('[Setup] ChatGPT 로그인 확인!');
+      } else {
+        console.log('[Setup] ChatGPT 로그인이 확인되지 않습니다.');
+        console.log('[Setup] 나중에 Chrome에서 chatgpt.com에 직접 로그인해주세요.');
+      }
+    }
+
+    // ── 최종 결과 출력 ──
+    console.log('');
+    console.log('========================================');
+    console.log('[Setup] 설정 결과');
+    console.log('========================================');
+    console.log(`  네이버 로그인:      ${'확인'}`);
+    console.log(`  블로그 글쓰기:      ${blogAccessOk ? '접근 가능' : '추가 인증 필요'}`);
+    console.log(`  ChatGPT 로그인:     ${chatgptOk ? '확인' : '미완료'}`);
+    console.log('');
+    if (blogAccessOk && chatgptOk) {
+      console.log('[Setup] 모든 설정 완료!');
+      console.log('[Setup] 사용 가능한 명령어:');
+      console.log('  npm run post:cdp       → 블로그 포스팅');
+      console.log('  npm run chatgpt:image  → ChatGPT 이미지 생성');
+      console.log('  npm run post:full      → 이미지 생성 + 블로그 포스팅');
+    } else if (blogAccessOk) {
+      console.log('[Setup] 네이버 블로그 포스팅 사용 가능:');
+      console.log('  npm run post:cdp');
+      console.log('');
+      console.log('[Setup] ChatGPT 이미지 기능을 사용하려면 chatgpt.com에 로그인 필요');
+    } else {
+      console.log('[Setup] 일부 기능이 아직 설정되지 않았습니다.');
+      console.log('[Setup] npm run chrome:setup 을 다시 실행해주세요.');
     }
     console.log('========================================');
 

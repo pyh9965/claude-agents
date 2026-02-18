@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>네이버 블로그 자동 포스팅</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #242836;
+      --border: #2e3347;
+      --text: #e4e7f1;
+      --text2: #8b90a5;
+      --accent: #6c8cff;
+      --accent2: #4a6cf7;
+      --green: #22c55e;
+      --red: #ef4444;
+      --orange: #f59e0b;
+      --radius: 12px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header h1 span { color: var(--accent); }
+    .header .status-badge {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .status-badge.idle { background: var(--surface2); color: var(--text2); }
+    .status-badge.running { background: rgba(34,197,94,0.15); color: var(--green); }
+    .status-badge.error { background: rgba(239,68,68,0.15); color: var(--red); }
+
+    /* Main Layout */
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 0;
+      height: calc(100vh - 60px);
+    }
+
+    /* Left Panel - Editor */
+    .editor-panel {
+      padding: 24px;
+      overflow-y: auto;
+      border-right: 1px solid var(--border);
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text2);
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+    input[type="text"], textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="text"]:focus, textarea:focus {
+      border-color: var(--accent);
+    }
+    textarea { resize: vertical; min-height: 100px; line-height: 1.6; }
+    .title-input { font-size: 18px; font-weight: 600; padding: 12px 16px; }
+
+    /* Section */
+    .section-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+    .section-header span {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    .section-body { padding: 16px; }
+    .section-body textarea { min-height: 120px; margin-bottom: 10px; }
+    .image-prompt-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .image-prompt-row input { flex: 1; }
+    .image-prompt-row .preview-thumb {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      flex-shrink: 0;
+    }
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .checkbox-row input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--accent);
+    }
+    .checkbox-row label {
+      font-size: 13px;
+      color: var(--text2);
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-primary {
+      background: var(--accent2);
+      color: white;
+    }
+    .btn-primary:hover:not(:disabled) { background: var(--accent); }
+    .btn-success {
+      background: var(--green);
+      color: white;
+    }
+    .btn-success:hover:not(:disabled) { background: #16a34a; }
+    .btn-danger {
+      background: transparent;
+      color: var(--red);
+      border: 1px solid var(--red);
+    }
+    .btn-danger:hover:not(:disabled) { background: rgba(239,68,68,0.1); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text2);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover:not(:disabled) { background: var(--surface2); color: var(--text); }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+    .action-bar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* Tags */
+    .tags-input {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      min-height: 42px;
+      align-items: center;
+    }
+    .tag {
+      background: var(--accent2);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 14px;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .tag .remove { cursor: pointer; opacity: 0.7; }
+    .tag .remove:hover { opacity: 1; }
+    .tags-input input {
+      border: none;
+      background: transparent;
+      outline: none;
+      flex: 1;
+      min-width: 100px;
+      padding: 4px;
+    }
+
+    /* Right Panel - Log & Progress */
+    .log-panel {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    .progress-section {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .progress-bar-container {
+      background: var(--surface2);
+      border-radius: 8px;
+      height: 8px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+    .progress-bar {
+      height: 100%;
+      background: var(--accent2);
+      border-radius: 8px;
+      transition: width 0.5s ease;
+      width: 0%;
+    }
+    .progress-text {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--text2);
+      margin-top: 6px;
+    }
+
+    /* Image Gallery */
+    .image-gallery {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .image-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .image-grid img {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 2px solid var(--border);
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .image-grid img:hover { border-color: var(--accent); }
+    .image-grid .placeholder {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 8px;
+      border: 2px dashed var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text2);
+      font-size: 24px;
+    }
+
+    /* Log */
+    .log-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      font-family: 'JetBrains Mono', 'Consolas', monospace;
+      font-size: 12px;
+      line-height: 1.8;
+      background: var(--bg);
+    }
+    .log-entry {
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .log-entry.info { color: var(--text2); }
+    .log-entry.success { color: var(--green); }
+    .log-entry.warn { color: var(--orange); }
+    .log-entry.error { color: var(--red); }
+    .log-time { color: var(--text2); opacity: 0.5; margin-right: 8px; }
+
+    /* Post Result */
+    .post-result {
+      padding: 16px 20px;
+      background: rgba(34,197,94,0.1);
+      border-top: 1px solid var(--green);
+      display: none;
+    }
+    .post-result a {
+      color: var(--accent);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .post-result a:hover { text-decoration: underline; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-overlay img {
+      max-width: 90vw;
+      max-height: 90vh;
+      border-radius: 12px;
+    }
+
+    /* Provider Toggle */
+    .provider-toggle {
+      display: flex;
+      gap: 6px;
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 4px;
+    }
+    .provider-btn {
+      padding: 6px 14px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: transparent;
+      color: var(--text2);
+    }
+    .provider-btn.active {
+      background: var(--accent2);
+      color: white;
+    }
+    .provider-btn:hover:not(.active) {
+      color: var(--text);
+      background: var(--border);
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <h1><span>네이버 블로그</span> 자동 포스팅</h1>
+    <div id="statusBadge" class="status-badge idle">대기 중</div>
+  </div>
+
+  <div class="main">
+    <!-- Left: Editor -->
+    <div class="editor-panel">
+      <!-- Topic -->
+      <div class="card" style="border-color: var(--accent2);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <div class="card-title" style="color: var(--accent); margin-bottom:0;">주제 입력</div>
+          <div class="provider-toggle">
+            <button class="provider-btn active" id="providerChatGPT" onclick="setProvider('chatgpt')">
+              🤖 ChatGPT
+            </button>
+            <button class="provider-btn" id="providerGemini" onclick="setProvider('gemini')">
+              ✨ Gemini
+            </button>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="topicInput"
+                 placeholder="블로그 글 주제를 입력하세요 (예: 칼국수, 제주도 여행...)"
+                 style="flex:1;"
+                 onkeydown="if(event.key==='Enter')generateContent()">
+          <button class="btn btn-primary" id="btnGenContent" onclick="generateContent()">
+            글 자동 생성
+          </button>
+        </div>
+        <div style="font-size:12px; color:var(--text2); margin-top:8px;" id="providerDesc">
+          ChatGPT가 주제에 맞는 제목, 본문, 이미지 프롬프트, 태그를 자동 생성합니다
+        </div>
+      </div>
+
+      <!-- Title -->
+      <div class="card">
+        <div class="card-title">글 제목</div>
+        <input type="text" id="postTitle" class="title-input"
+               placeholder="블로그 글 제목을 입력하세요..."
+               value="">
+      </div>
+
+      <!-- Sections -->
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <div class="card-title" style="margin-bottom:0;">본문 구성</div>
+          <button class="btn btn-ghost btn-sm" onclick="addSection()">+ 섹션 추가</button>
+        </div>
+        <div id="sectionsContainer"></div>
+      </div>
+
+      <!-- Tags -->
+      <div class="card">
+        <div class="card-title">태그</div>
+        <div class="tags-input" id="tagsContainer" onclick="document.getElementById('tagInput').focus()">
+          <input type="text" id="tagInput" placeholder="태그 입력 후 Enter"
+                 onkeydown="handleTagInput(event)">
+        </div>
+      </div>
+
+      <!-- Options & Actions -->
+      <div class="card">
+        <div class="card-title">설정</div>
+        <div class="checkbox-row" style="margin-bottom:16px;">
+          <input type="checkbox" id="isPublic" checked>
+          <label for="isPublic">공개 글</label>
+        </div>
+        <div class="action-bar">
+          <button class="btn btn-primary" id="btnGenImages" onclick="generateImages()">
+            이미지 생성
+          </button>
+          <button class="btn btn-success" id="btnPostBlog" onclick="postBlog()">
+            블로그 발행
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="clearImages()">이미지 삭제</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Log & Progress -->
+    <div class="log-panel">
+      <div class="progress-section">
+        <div class="card-title">진행 상황</div>
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="progress-text">
+          <span id="progressLabel">준비 완료</span>
+          <span id="progressPercent">0%</span>
+        </div>
+      </div>
+
+      <div class="image-gallery">
+        <div class="card-title">생성된 이미지</div>
+        <div class="image-grid" id="imageGrid">
+          <div class="placeholder">1</div>
+          <div class="placeholder">2</div>
+          <div class="placeholder">3</div>
+        </div>
+      </div>
+
+      <div class="post-result" id="postResult">
+        <div style="font-size:13px; font-weight:600; margin-bottom:6px; color:var(--green);">
+          발행 완료!
+        </div>
+        <a id="postUrl" href="#" target="_blank">게시글 보기</a>
+      </div>
+
+      <div class="log-container" id="logContainer"></div>
+    </div>
+  </div>
+
+  <!-- Image Modal -->
+  <div class="modal-overlay" id="imageModal" onclick="this.classList.remove('active')">
+    <img id="modalImage" src="">
+  </div>
+
+  <script>
+    // ─── State ───
+    let tags = [];
+    let sectionCount = 0;
+    let selectedProvider = 'chatgpt';
+
+    // ─── Provider Toggle ───
+    function setProvider(provider) {
+      selectedProvider = provider;
+      document.getElementById('providerChatGPT').classList.toggle('active', provider === 'chatgpt');
+      document.getElementById('providerGemini').classList.toggle('active', provider === 'gemini');
+      const desc = document.getElementById('providerDesc');
+      if (provider === 'gemini') {
+        desc.textContent = 'Gemini가 주제에 맞는 제목, 본문, 이미지 프롬프트, 태그를 자동 생성합니다';
+      } else {
+        desc.textContent = 'ChatGPT가 주제에 맞는 제목, 본문, 이미지 프롬프트, 태그를 자동 생성합니다';
+      }
+    }
+
+    // ─── SSE ───
+    const evtSource = new EventSource('/api/events');
+
+    evtSource.addEventListener('log', (e) => {
+      const { message, level, timestamp } = JSON.parse(e.data);
+      appendLog(message, level, timestamp);
+    });
+
+    evtSource.addEventListener('status', (e) => {
+      const data = JSON.parse(e.data);
+      updateProgress(data);
+    });
+
+    evtSource.addEventListener('image-ready', (e) => {
+      const data = JSON.parse(e.data);
+      showImage(data.index, data.url, data.size);
+    });
+
+    evtSource.addEventListener('post-complete', (e) => {
+      const data = JSON.parse(e.data);
+      showPostResult(data.url);
+    });
+
+    evtSource.addEventListener('content-ready', (e) => {
+      const data = JSON.parse(e.data);
+      populateContent(data);
+    });
+
+    evtSource.addEventListener('images-cleared', () => {
+      const grid = document.getElementById('imageGrid');
+      grid.innerHTML = '<div class="placeholder">1</div><div class="placeholder">2</div><div class="placeholder">3</div>';
+    });
+
+    evtSource.addEventListener('content-generation-complete', (e) => {
+      const { success } = JSON.parse(e.data);
+      if (!success) return; // 오류 발생 시 자동 실행 안 함
+
+      // 현재 UI에서 이미지 프롬프트가 있는 섹션 확인
+      const sections = document.querySelectorAll('.section-card');
+      const hasPrompts = Array.from(sections).some(sec => {
+        const idx = sec.dataset.idx;
+        const hasImage = document.getElementById(`sectionHasImage-${idx}`)?.checked;
+        if (!hasImage) return false;
+        const prompt = document.getElementById(`sectionPrompt-${idx}`)?.value?.trim() || '';
+        return prompt.length > 0;
+      });
+
+      if (hasPrompts) {
+        appendLog('이미지 자동 생성을 시작합니다...', 'info');
+        setTimeout(() => generateImages(), 500);
+      } else {
+        setStatus('idle', '글 생성 완료');
+        disableButtons(false);
+      }
+    });
+
+    evtSource.addEventListener('error', (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        appendLog(`오류: ${data.message}`, 'error');
+        setStatus('error', '오류 발생');
+      } catch {}
+    });
+
+    // ─── Sections ───
+    function addSection(content = '', prompt = '', hasImage = true) {
+      sectionCount++;
+      const idx = sectionCount;
+      const html = `
+        <div class="section-card" id="section-${idx}" data-idx="${idx}">
+          <div class="section-header">
+            <span>${idx}번 섹션</span>
+            <button class="btn btn-danger btn-sm" onclick="removeSection(${idx})">삭제</button>
+          </div>
+          <div class="section-body">
+            <textarea placeholder="이 섹션의 본문 내용을 입력하세요..."
+                      id="sectionContent-${idx}">${content}</textarea>
+            <div class="checkbox-row" style="margin-bottom:8px;">
+              <input type="checkbox" id="sectionHasImage-${idx}" ${hasImage ? 'checked' : ''}
+                     onchange="toggleImagePrompt(${idx})">
+              <label for="sectionHasImage-${idx}">이 섹션 뒤에 이미지 넣기</label>
+            </div>
+            <div class="image-prompt-row" id="imagePromptRow-${idx}" style="${hasImage ? '' : 'display:none'}">
+              <input type="text" placeholder="이미지 생성 프롬프트를 입력하세요..."
+                     id="sectionPrompt-${idx}" value="${prompt}">
+              <img class="preview-thumb" id="sectionThumb-${idx}"
+                   src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect fill='%23242836' width='48' height='48'/%3E%3Ctext x='24' y='28' text-anchor='middle' fill='%238b90a5' font-size='16'%3E?%3C/text%3E%3C/svg%3E"
+                   onclick="if(this.dataset.url) showModal(this.dataset.url)">
+            </div>
+          </div>
+        </div>`;
+      document.getElementById('sectionsContainer').insertAdjacentHTML('beforeend', html);
+    }
+
+    function removeSection(idx) {
+      const el = document.getElementById(`section-${idx}`);
+      if (el) el.remove();
+    }
+
+    function toggleImagePrompt(idx) {
+      const checked = document.getElementById(`sectionHasImage-${idx}`).checked;
+      document.getElementById(`imagePromptRow-${idx}`).style.display = checked ? '' : 'none';
+    }
+
+    // ─── Tags ───
+    function handleTagInput(e) {
+      if (e.key === 'Enter' && e.target.value.trim()) {
+        e.preventDefault();
+        const tag = e.target.value.trim();
+        if (!tags.includes(tag)) {
+          tags.push(tag);
+          renderTags();
+        }
+        e.target.value = '';
+      }
+    }
+
+    function removeTag(tag) {
+      tags = tags.filter(t => t !== tag);
+      renderTags();
+    }
+
+    function renderTags() {
+      const container = document.getElementById('tagsContainer');
+      const input = document.getElementById('tagInput');
+      container.innerHTML = '';
+      tags.forEach(tag => {
+        const el = document.createElement('div');
+        el.className = 'tag';
+        el.innerHTML = `${tag} <span class="remove" onclick="removeTag('${tag}')">&times;</span>`;
+        container.appendChild(el);
+      });
+      container.appendChild(input);
+    }
+
+    // ─── Actions ───
+    async function generateContent() {
+      const topic = document.getElementById('topicInput').value.trim();
+      if (!topic) { alert('주제를 입력해주세요.'); return; }
+
+      setStatus('running', '글 생성 중...');
+      disableButtons(true);
+
+      try {
+        const res = await fetch('/api/generate-content', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic, provider: selectedProvider }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error);
+        }
+      } catch (e) {
+        appendLog(`오류: ${e.message}`, 'error');
+        setStatus('error', '오류 발생');
+        disableButtons(false);
+      }
+    }
+
+    function populateContent(data) {
+      document.getElementById('postTitle').value = data.title || '';
+
+      // 기존 섹션 제거 후 재생성
+      document.getElementById('sectionsContainer').innerHTML = '';
+      sectionCount = 0;
+
+      data.sections.forEach((section) => {
+        const hasImage = !!section.imagePrompt;
+        addSection(section.content, section.imagePrompt || '', hasImage);
+      });
+
+      // 태그 설정
+      tags = data.tags || [];
+      renderTags();
+
+      appendLog('블로그 글 생성 완료! 이미지 생성 준비 중...', 'success');
+    }
+
+    async function generateImages() {
+      const sections = document.querySelectorAll('.section-card');
+      const prompts = [];
+      sections.forEach(sec => {
+        const idx = sec.dataset.idx;
+        const hasImage = document.getElementById(`sectionHasImage-${idx}`)?.checked;
+        if (hasImage) {
+          const prompt = document.getElementById(`sectionPrompt-${idx}`)?.value || '';
+          if (prompt.trim()) prompts.push(prompt.trim());
+        }
+      });
+
+      if (!prompts.length) {
+        alert('이미지 프롬프트를 최소 1개 입력해주세요.');
+        return;
+      }
+
+      setStatus('running', '이미지 생성 중...');
+      disableButtons(true);
+
+      try {
+        const res = await fetch('/api/generate-images', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompts, provider: selectedProvider }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error);
+        }
+      } catch (e) {
+        appendLog(`오류: ${e.message}`, 'error');
+        setStatus('error', '오류 발생');
+        disableButtons(false);
+      }
+    }
+
+    async function postBlog() {
+      const title = document.getElementById('postTitle').value.trim();
+      if (!title) { alert('글 제목을 입력해주세요.'); return; }
+
+      const sectionEls = document.querySelectorAll('.section-card');
+      const sections = [];
+
+      sectionEls.forEach(sec => {
+        const idx = sec.dataset.idx;
+        const content = document.getElementById(`sectionContent-${idx}`)?.value || '';
+        const hasImage = document.getElementById(`sectionHasImage-${idx}`)?.checked;
+        const imagePrompt = hasImage ? (document.getElementById(`sectionPrompt-${idx}`)?.value || '') : '';
+
+        sections.push({ content, imagePrompt: imagePrompt || undefined });
+      });
+
+      if (!sections.length) { alert('본문 섹션을 최소 1개 추가해주세요.'); return; }
+
+      const hasPrompts = sections.some(s => s.imagePrompt?.trim());
+      if (hasPrompts) {
+        appendLog('이미지 프롬프트 감지 → 이미지 생성 후 발행합니다.', 'info');
+      }
+
+      setStatus('running', hasPrompts ? '이미지 생성 + 발행 중...' : '발행 중...');
+      disableButtons(true);
+
+      try {
+        const res = await fetch('/api/post-full', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title,
+            sections,
+            tags,
+            isPublic: document.getElementById('isPublic').checked,
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error);
+        }
+      } catch (e) {
+        appendLog(`오류: ${e.message}`, 'error');
+        setStatus('error', '오류 발생');
+        disableButtons(false);
+      }
+    }
+
+    async function clearImages() {
+      if (!confirm('생성된 이미지를 모두 삭제할까요?')) return;
+      await fetch('/api/images', { method: 'DELETE' });
+      const grid = document.getElementById('imageGrid');
+      grid.innerHTML = '<div class="placeholder">1</div><div class="placeholder">2</div><div class="placeholder">3</div>';
+      appendLog('이미지가 삭제되었습니다.', 'info');
+    }
+
+    // ─── UI Helpers ───
+    function setStatus(type, text) {
+      const badge = document.getElementById('statusBadge');
+      badge.className = `status-badge ${type}`;
+      badge.textContent = text;
+    }
+
+    function disableButtons(disabled) {
+      document.getElementById('btnGenContent').disabled = disabled;
+      document.getElementById('btnGenImages').disabled = disabled;
+      document.getElementById('btnPostBlog').disabled = disabled;
+      if (!disabled) setStatus('idle', '대기 중');
+    }
+
+    function updateProgress(data) {
+      const bar = document.getElementById('progressBar');
+      const label = document.getElementById('progressLabel');
+      const percent = document.getElementById('progressPercent');
+
+      bar.style.width = `${data.progress || 0}%`;
+      percent.textContent = `${data.progress || 0}%`;
+
+      const labels = {
+        'connecting': 'Chrome 연결 중...',
+        'generating-content': '글 자동 생성 중...',
+        'content-done': '글 생성 완료!',
+        'generating': `이미지 생성 중 (${data.current || 0}/${data.total || 0})`,
+        'images-done': '모든 이미지 준비 완료!',
+        'login-check': '네이버 로그인 확인 중...',
+        'posting': '블로그에 글 쓰는 중...',
+        'done': '완료!',
+      };
+      label.textContent = labels[data.step] || data.step;
+
+      if (data.step === 'done' || data.step === 'images-done') {
+        disableButtons(false);
+        if (data.step === 'done') setStatus('idle', '완료');
+      }
+    }
+
+    function appendLog(message, level = 'info', timestamp = null) {
+      const container = document.getElementById('logContainer');
+      const time = timestamp || new Date().toLocaleTimeString('ko-KR');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${level}`;
+      entry.innerHTML = `<span class="log-time">${time}</span>${escapeHtml(message)}`;
+      container.appendChild(entry);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function showImage(index, url, size) {
+      const grid = document.getElementById('imageGrid');
+      const children = grid.children;
+      if (index < children.length) {
+        const img = document.createElement('img');
+        img.src = url + '?t=' + Date.now();
+        img.title = `${size}KB`;
+        img.onclick = () => showModal(url);
+        children[index].replaceWith(img);
+      }
+
+      // 섹션 썸네일 업데이트
+      const sections = document.querySelectorAll('.section-card');
+      let imgIdx = 0;
+      sections.forEach(sec => {
+        const idx = sec.dataset.idx;
+        const hasImage = document.getElementById(`sectionHasImage-${idx}`)?.checked;
+        if (hasImage) {
+          if (imgIdx === index) {
+            const thumb = document.getElementById(`sectionThumb-${idx}`);
+            if (thumb) {
+              thumb.src = url + '?t=' + Date.now();
+              thumb.dataset.url = url;
+            }
+          }
+          imgIdx++;
+        }
+      });
+    }
+
+    function showPostResult(url) {
+      const result = document.getElementById('postResult');
+      const link = document.getElementById('postUrl');
+      link.href = url;
+      link.textContent = url;
+      result.style.display = 'block';
+      setStatus('idle', '발행 완료!');
+      disableButtons(false);
+    }
+
+    function showModal(url) {
+      document.getElementById('modalImage').src = url;
+      document.getElementById('imageModal').classList.add('active');
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ─── Init ───
+    async function init() {
+      // 기본 섹션 4개 추가
+      addSection('', '블로그 썸네일 이미지 프롬프트...', true);
+      addSection('', '', true);
+      addSection('', '', true);
+      addSection('', '', false);
+
+      // 서버 상태 불러오기
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        if (data.blogId) {
+          appendLog(`블로그 ID: ${data.blogId}`, 'info');
+        }
+        if (data.images.length) {
+          data.images.forEach((img, i) => {
+            showImage(i, img.url, img.size);
+          });
+        }
+      } catch {}
+
+      appendLog('준비 완료! 내용을 입력하고 버튼을 눌러주세요.', 'success');
+    }
+
+    init();
+  </script>
+</body>
+</html>

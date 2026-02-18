@@ -7,8 +7,11 @@
     "post": "npx playwright test tests/blog-post.spec.ts --headed",
     "post:headless": "npx playwright test tests/blog-post.spec.ts",
     "post:cdp": "npx tsx scripts/post-cdp.ts",
+    "post:full": "npx tsx scripts/post-with-image.ts",
+    "chatgpt:image": "npx tsx scripts/generate-image.ts",
     "chrome:setup": "npx tsx scripts/setup-chrome.ts",
     "chrome:debug": "npx tsx scripts/launch-chrome.ts",
+    "gui": "npx tsx src/server.ts",
     "codegen": "npx playwright codegen https://blog.naver.com --load-storage=playwright/.auth/naver.json",
     "debug": "npx playwright test tests/blog-post.spec.ts --debug"
   },
@@ -17,7 +20,10 @@
     "tsx": "^4.21.0"
   },
   "dependencies": {
+    "@types/express": "^5.0.6",
+    "docx": "^9.5.3",
     "dotenv": "^16.4.0",
+    "express": "^5.2.1",
     "playwright": "^1.58.2"
   }
 }
