@@ -56,5 +56,10 @@ export default defineConfig({
         storageState: 'playwright/.auth/naver.json',
       },
     },
+    {
+      name: 'cdp-test',
+      testMatch: /\.spec\.ts/,
+      testIgnore: [/auth\.setup/, /blog-post\.spec/],
+    },
   ],
 });

@@ -90,6 +90,102 @@ BLOG_ID=블로그_아이디          # 로그인 ID와 다를 수 있음
 
 현재 사용자: BLOG_ID는 `recensione`, NAVER_ID는 `pyh9965` (서로 다름).
 
+## Playwright CLI 테스트 가이드
+
+새로운 기능을 추가하면 반드시 Playwright CLI로 E2E 테스트를 작성하고 실행하여 검증해야 합니다.
+
+### 테스트 구조
+
+```
+playwright.config.ts          # 프로젝트 설정 (auth-setup, blog-post, cdp-test)
+tests/
+  auth.setup.ts               # 네이버 로그인 세션 저장 (레거시)
+  blog-post.spec.ts           # 기본 포스팅 테스트 (레거시, auth 의존)
+  format-test.spec.ts         # CDP 기반 전체 파이프라인 테스트 (이미지+포스팅)
+  [새기능].spec.ts             # 새 기능 테스트는 여기에 추가
+```
+
+### 테스트 실행 방법
+
+```bash
+# 사전 조건: Chrome 디버그 모드 실행 (CDP 포트 9222)
+npm run chrome:debug
+
+# CDP 기반 테스트 실행 (권장)
+npx playwright test tests/파일명.spec.ts --project=cdp-test --headed
+
+# 전체 CDP 테스트 실행
+npx playwright test --project=cdp-test --headed
+
+# 레거시 테스트 (auth-setup 필요)
+npm run login                                      # 먼저 로그인
+npx playwright test --project=blog-post --headed    # 포스팅 테스트
+
+# 테스트 결과 확인
+npx playwright show-report                          # HTML 리포트
+npx playwright show-trace test-results/.../trace.zip  # 실패 시 트레이스
+```
+
+### CDP 테스트 작성 패턴
+
+새 기능을 테스트할 때는 `cdp-test` 프로젝트를 사용. Playwright가 관리하는 브라우저 대신 기존 Chrome CDP에 직접 연결하는 패턴:
+
+```typescript
+import { test, chromium } from '@playwright/test';
+
+test.setTimeout(300_000); // 이미지 생성 포함 시 5분
+
+test('기능 테스트', async () => {
+  // CDP로 기존 Chrome에 연결 (포트 9222)
+  const browser = await chromium.connectOverCDP('http://127.0.0.1:9222');
+  const context = browser.contexts()[0];
+  const page = context.pages()[0] || await context.newPage();
+
+  try {
+    // ... 테스트 로직 ...
+  } finally {
+    // browser.close() 호출하지 않음! Chrome 유지
+  }
+});
+```
+
+### 테스트 필수 검증 항목
+
+새 기능 추가 시 아래 항목을 반드시 E2E 테스트로 검증:
+
+1. **이미지 생성**: ChatGPT DALL-E로 이미지가 실제 생성되고 `output/` 디렉토리에 저장되는지 (10KB 이상)
+2. **에디터 동작**: SmartEditor ONE에서 제목, 본문, 이미지 삽입이 정상 동작하는지
+3. **인터리브 배치**: 본문 → 이미지 → 본문 → 이미지 교차 배치가 제대로 되는지
+4. **포맷팅**: `formatForBlog()`에 의해 긴 텍스트가 2~3문장 단위로 문단 분리되는지
+5. **발행**: 비공개(`isPublic: false`)로 발행 후 `PostView.naver` URL로 리다이렉트되는지
+6. **스크린샷**: 각 단계별 스크린샷을 `test-results/`에 저장하여 시각적 확인
+
+### 테스트 실패 시 디버깅
+
+```bash
+# Playwright Inspector로 단계별 실행
+npx playwright test tests/파일명.spec.ts --project=cdp-test --debug
+
+# 실패한 테스트의 trace 확인
+npx playwright show-trace test-results/테스트폴더/trace.zip
+
+# 셀렉터 탐색 (codegen)
+npx playwright codegen https://blog.naver.com
+
+# 수동 CDP 연결 디버그
+npx tsx scripts/debug-artifact.ts
+```
+
+### playwright.config.ts 프로젝트 구성
+
+| 프로젝트 | testMatch | 용도 |
+|----------|-----------|------|
+| `auth-setup` | `auth.setup.ts` | 네이버 로그인 세션 저장 (레거시) |
+| `blog-post` | `blog-post.spec.ts` | 레거시 포스팅 (auth 의존) |
+| `cdp-test` | `*.spec.ts` (위 2개 제외) | CDP 기반 테스트 (권장) |
+
+새 테스트 파일은 `tests/기능명.spec.ts`로 생성하면 자동으로 `cdp-test` 프로젝트에 포함됨.
+
 ## 콘텐츠 생성 프로토콜
 
 `ChatGPTImageGenerator.generateBlogContent()`과 `GeminiGenerator.generateBlogContent()` 모두 동일한 구조화된 프롬프트 형식을 사용. `---TITLE---`, `---SECTION1---`~`---SECTION4---`, `---IMAGE1---`~`---IMAGE3---`, `---TAGS---` 구분자로 응답을 구분하고, `parseBlogContent()` 메서드가 이를 `BlogContent` 객체로 파싱. 파싱 실패 시 전체 응답 텍스트를 단일 섹션으로 처리 (폴백).

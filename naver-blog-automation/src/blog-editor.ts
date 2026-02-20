@@ -54,25 +54,154 @@ export class NaverBlogEditor {
   constructor(page: Page, blogId: string) {
     this.page = page;
     this.blogId = blogId;
+
+    // "이 페이지를 이탈하시겠습니까?" beforeunload 다이얼로그 자동 수락
+    this.page.on('dialog', (dialog) => {
+      dialog.accept().catch(() => {});
+    });
+  }
+
+  // ─── 블로그 가독성 포맷팅 ───
+
+  /**
+   * 블로그 본문을 사람이 쓴 것처럼 가독성 좋게 포맷팅
+   * - 2~3문장마다 빈 줄(문단 구분) 삽입
+   * - 이미 줄바꿈이 있는 텍스트는 기존 구조 유지
+   * - 리스트/번호 항목은 그대로 보존
+   */
+  private formatForBlog(text: string): string {
+    // 이미 충분한 문단 구분이 있으면 그대로 반환
+    const existingParagraphs = text.split(/\n\s*\n/).filter(p => p.trim());
+    if (existingParagraphs.length >= 3) {
+      return text;
+    }
+
+    // 줄 단위로 분리
+    const lines = text.split('\n');
+    const result: string[] = [];
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+
+      // 빈 줄은 그대로 유지
+      if (!trimmed) {
+        result.push('');
+        continue;
+      }
+
+      // 리스트/번호 항목은 그대로 보존
+      if (/^[\d]+[.)]\s|^[-•·]\s|^[①-⑳]/.test(trimmed)) {
+        result.push(trimmed);
+        continue;
+      }
+
+      // 짧은 줄(제목/소제목 느낌)은 그대로
+      if (trimmed.length < 30) {
+        result.push(trimmed);
+        continue;
+      }
+
+      // 긴 텍스트를 문장 단위로 분리하여 2~3문장마다 문단 나누기
+      const formatted = this.splitIntoParagraphs(trimmed);
+      result.push(formatted);
+    }
+
+    return result.join('\n');
+  }
+
+  /**
+   * 긴 텍스트를 2~3문장 단위 문단으로 분리
+   * 한국어 문장 종결 패턴: ~다. ~요. ~죠. ~죠! ~까? ~네. 등
+   */
+  private splitIntoParagraphs(text: string): string {
+    // 문장 종결 패턴으로 분리 (마침표/물음표/느낌표 + 공백)
+    // 한국어: ~다. ~요. ~죠. ~네. ~까? ~야! ~세요. ~습니다. ~었다. ~였다. 등
+    const sentenceEndPattern = /([.!?])\s+/g;
+    const sentences: string[] = [];
+    let lastIndex = 0;
+
+    let match;
+    while ((match = sentenceEndPattern.exec(text)) !== null) {
+      sentences.push(text.substring(lastIndex, match.index + match[1].length).trim());
+      lastIndex = match.index + match[0].length;
+    }
+    // 마지막 남은 텍스트
+    if (lastIndex < text.length) {
+      const remaining = text.substring(lastIndex).trim();
+      if (remaining) sentences.push(remaining);
+    }
+
+    // 문장이 3개 이하면 분리 불필요
+    if (sentences.length <= 3) {
+      return text;
+    }
+
+    // 2~3문장씩 묶어 문단 생성
+    const paragraphs: string[] = [];
+    let i = 0;
+    while (i < sentences.length) {
+      // 남은 문장 수에 따라 2~3문장씩 그룹
+      const remaining = sentences.length - i;
+      let groupSize: number;
+      if (remaining <= 3) {
+        groupSize = remaining; // 남은 거 전부
+      } else if (remaining === 4) {
+        groupSize = 2; // 2+2로 균등 분배
+      } else {
+        groupSize = randomInt(2, 3); // 랜덤 2~3문장
+      }
+
+      const group = sentences.slice(i, i + groupSize);
+      paragraphs.push(group.join(' '));
+      i += groupSize;
+    }
+
+    return paragraphs.join('\n\n');
   }
 
   // ─── OS 레벨 파일 다이얼로그 닫기 ───
 
-  /** Windows "열기" 파일 선택 다이얼로그를 PowerShell로 강제 닫기 */
+  /**
+   * Windows 네이티브 파일 다이얼로그(#32770) 강제 닫기
+   * C# 코드 내부에서 EnumWindows + WM_CLOSE 처리 (PowerShell scriptblock delegate 문제 회피)
+   */
   private closeNativeFileDialogs(): void {
+    // C# 내부에서 EnumWindows 콜백을 완전히 처리 (PowerShell delegate 변환 불가 문제 해결)
+    const script = [
+      'try {',
+      "Add-Type -Name DC -Namespace W32 -EA Stop -MemberDefinition @'",
+      'delegate bool EWP(IntPtr h, IntPtr l);',
+      '[DllImport("user32.dll")] static extern bool EnumWindows(EWP f, IntPtr l);',
+      '[DllImport("user32.dll")] static extern int GetClassName(IntPtr h, System.Text.StringBuilder s, int n);',
+      '[DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);',
+      '[DllImport("user32.dll")] static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);',
+      'public static void CloseAll() {',
+      '  EnumWindows((h, l) => {',
+      '    if (IsWindowVisible(h)) {',
+      '      var sb = new System.Text.StringBuilder(256);',
+      '      GetClassName(h, sb, 256);',
+      '      if (sb.ToString() == "#32770") PostMessage(h, 0x0010, IntPtr.Zero, IntPtr.Zero);',
+      '    }',
+      '    return true;',
+      '  }, IntPtr.Zero);',
+      '}',
+      "'@",
+      '} catch {}',
+      '[W32.DC]::CloseAll()',
+    ].join('\n');
+
     try {
-      spawnSync(
-        'powershell',
-        [
-          '-NonInteractive',
-          '-Command',
-          '$s = New-Object -ComObject WScript.Shell; ' +
-          'if ($s.AppActivate("열기")) { Start-Sleep -Milliseconds 300; $s.SendKeys("{ESC}") }; ' +
-          'if ($s.AppActivate("Open")) { Start-Sleep -Milliseconds 300; $s.SendKeys("{ESC}") }',
-        ],
-        { timeout: 5000, stdio: 'ignore' },
-      );
+      const encoded = Buffer.from(script, 'utf16le').toString('base64');
+      spawnSync('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', ['-NonInteractive', '-EncodedCommand', encoded], {
+        timeout: 10_000,
+        stdio: 'ignore',
+      });
     } catch { /* 다이얼로그 없음 - 무시 */ }
+  }
+
+  /** 외부에서 호출 가능한 정리 메서드 - OS 파일 다이얼로그 닫기 */
+  async cleanup(): Promise<void> {
+    this.closeNativeFileDialogs();
   }
 
   // ─── 내부 헬퍼: iframe / page 자동 분기 ───
@@ -374,7 +503,8 @@ export class NaverBlogEditor {
   // ─── 본문 입력 ───
 
   async writeContent(content: string): Promise<void> {
-    console.log(`[Editor] 본문 입력 (${content.length}자)`);
+    const formatted = this.formatForBlog(content);
+    console.log(`[Editor] 본문 입력 (${content.length}자 → 포맷팅 후 ${formatted.length}자)`);
 
     // 본문 영역 클릭 (여러 셀렉터 시도)
     const contentLocator = this.loc('.se-component.se-text .se-text-paragraph')
@@ -388,7 +518,7 @@ export class NaverBlogEditor {
     await humanDelay(300, 600);
 
     // 줄 단위로 입력 (자연스럽게)
-    const lines = content.split('\n');
+    const lines = formatted.split('\n');
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -416,7 +546,8 @@ export class NaverBlogEditor {
 
   /** 클립보드를 통한 빠른 본문 입력 (대량 텍스트용) */
   async writeContentFast(content: string): Promise<void> {
-    console.log(`[Editor] 본문 빠른 입력 (클립보드, ${content.length}자)`);
+    const formatted = this.formatForBlog(content);
+    console.log(`[Editor] 본문 빠른 입력 (클립보드, ${content.length}자 → 포맷팅 후 ${formatted.length}자)`);
 
     const contentLocator = this.loc('.se-component.se-text .se-text-paragraph')
       .or(this.loc('.se-component.se-text'))
@@ -431,7 +562,7 @@ export class NaverBlogEditor {
     // 클립보드에 복사 후 붙여넣기
     await this.page.evaluate((text) => {
       navigator.clipboard.writeText(text);
-    }, content);
+    }, formatted);
     await humanDelay(300, 500);
 
     await this.page.keyboard.press('Control+V');
@@ -663,6 +794,9 @@ export class NaverBlogEditor {
         await this.page.screenshot({ path: 'test-results/debug-image-upload-failed.png', fullPage: true });
         console.warn(`[Editor] 이미지 업로드 실패: ${imagePath}`);
       }
+
+      // 각 이미지 업로드 완료 후 OS 파일 다이얼로그 강제 닫기
+      this.closeNativeFileDialogs();
     }
   }
 
@@ -896,6 +1030,9 @@ export class NaverBlogEditor {
       console.log(`[Editor] 발행 후 이동: ${currentUrl}`);
     }
 
+    // 발행 완료 후 남아있는 OS 파일 다이얼로그 닫기
+    this.closeNativeFileDialogs();
+
     console.log('[Editor] 발행 프로세스 완료');
   }
 
@@ -930,6 +1067,9 @@ export class NaverBlogEditor {
       data.tags,
       data.category,
     );
+
+    // 포스팅 완료 후 남아있는 OS 파일 다이얼로그 최종 정리
+    this.closeNativeFileDialogs();
 
     console.log('========================================');
     console.log('[Blog] 포스팅 완료!');
@@ -994,6 +1134,9 @@ export class NaverBlogEditor {
       data.category,
     );
 
+    // 인터리브 포스팅 완료 후 남아있는 OS 파일 다이얼로그 최종 정리
+    this.closeNativeFileDialogs();
+
     console.log('========================================');
     console.log('[Blog] 인터리브 포스팅 완료!');
     console.log('========================================');
@@ -1001,7 +1144,8 @@ export class NaverBlogEditor {
 
   /** 에디터 본문 끝에 텍스트 추가 (기존 내용 유지) */
   async writeContentAppend(content: string): Promise<void> {
-    console.log(`[Editor] 본문 추가 입력 (${content.length}자)`);
+    const formatted = this.formatForBlog(content);
+    console.log(`[Editor] 본문 추가 입력 (${content.length}자 → 포맷팅 후 ${formatted.length}자)`);
 
     // 본문 영역의 마지막 위치 찾기
     const contentLocator = this.loc('.se-component.se-text .se-text-paragraph')
@@ -1018,7 +1162,7 @@ export class NaverBlogEditor {
     // 클립보드를 통한 빠른 입력
     await this.page.evaluate((text) => {
       navigator.clipboard.writeText(text);
-    }, content);
+    }, formatted);
     await humanDelay(300, 500);
 
     await this.page.keyboard.press('Control+V');
