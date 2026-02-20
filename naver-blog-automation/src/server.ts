@@ -17,6 +17,7 @@ import { ChromeCDP } from './chrome-cdp';
 import { NaverBlogEditor, type InterleavedPostData } from './blog-editor';
 import { ChatGPTImageGenerator, type BlogContent } from './chatgpt-image';
 import { GeminiGenerator } from './gemini-generator';
+import { ClaudeGenerator } from './claude-generator';
 import { applyStealthScripts, humanDelay } from './human-like';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -125,11 +126,13 @@ app.post('/api/generate-images', async (req, res) => {
     const cdp = new ChromeCDP({ debugPort: 9222, killExisting: false });
     try {
       broadcast('status', { step: 'connecting', progress: 0 });
-      log(`Chrome CDP 연결 중... (${provider === 'gemini' ? 'Gemini' : 'ChatGPT'})`);
+      const providerName = provider === 'gemini' ? 'Gemini' : provider === 'claude' ? 'Claude (이미지→ChatGPT 폴백)' : 'ChatGPT';
+      log(`Chrome CDP 연결 중... (${providerName})`);
 
       const { page } = await cdp.connect();
       await applyStealthScripts(page);
 
+      // Claude는 이미지 생성 불가 → ChatGPT로 자동 폴백
       const generator = provider === 'gemini'
         ? new GeminiGenerator(page)
         : new ChatGPTImageGenerator(page);
@@ -229,17 +232,20 @@ app.post('/api/generate-content', async (req, res) => {
       broadcast('images-cleared', {});
 
       broadcast('status', { step: 'connecting', progress: 0 });
-      log(`Chrome CDP 연결 중... (${provider === 'gemini' ? 'Gemini' : 'ChatGPT'})`);
+      const providerName = provider === 'claude' ? 'Claude' : provider === 'gemini' ? 'Gemini' : 'ChatGPT';
+      log(`Chrome CDP 연결 중... (${providerName})`);
 
       const { page } = await cdp.connect();
       await applyStealthScripts(page);
 
       broadcast('status', { step: 'generating-content', progress: 10 });
-      log(`주제: "${topic}" 블로그 글 생성 중... [${provider === 'gemini' ? 'Gemini' : 'ChatGPT'}]`);
+      log(`주제: "${topic}" 블로그 글 생성 중... [${providerName}]`);
 
-      const generator = provider === 'gemini'
-        ? new GeminiGenerator(page)
-        : new ChatGPTImageGenerator(page);
+      const generator = provider === 'claude'
+        ? new ClaudeGenerator(page)
+        : provider === 'gemini'
+          ? new GeminiGenerator(page)
+          : new ChatGPTImageGenerator(page);
       const content: BlogContent = await generator.generateBlogContent(topic);
 
       broadcast('status', { step: 'content-done', progress: 100 });

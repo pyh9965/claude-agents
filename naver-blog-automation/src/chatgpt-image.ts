@@ -225,6 +225,7 @@ export class ChatGPTImageGenerator {
 
     const startTime = Date.now();
     let lastLog = startTime;
+    let textResponseRetried = false;
 
     while (Date.now() - startTime < timeoutMs) {
       const hasImage = await this.findGeneratedImage();
@@ -235,6 +236,21 @@ export class ChatGPTImageGenerator {
         // 이미지 렌더링 안정화 대기
         await humanDelay(2000, 3000);
         return;
+      }
+
+      // ChatGPT가 이미지 대신 텍스트로 응답했는지 감지 (30초 후부터 체크)
+      if (!textResponseRetried && Date.now() - startTime > 30_000) {
+        const isTextResponse = await this.detectTextOnlyResponse();
+        if (isTextResponse) {
+          console.log('[ChatGPT] ⚠️ 이미지 대신 텍스트 응답 감지 → 재요청');
+          textResponseRetried = true;
+          // 이미지 생성을 더 강하게 요청
+          await this.sendImagePrompt(
+            'Please generate the image now. Use DALL-E to create the actual image. Do not explain or describe - just generate the image.',
+          );
+          await humanDelay(5000, 8000);
+          continue;
+        }
       }
 
       // 10초마다 진행 로그
@@ -251,6 +267,27 @@ export class ChatGPTImageGenerator {
     // 타임아웃 시 디버그 스크린샷
     await this.page.screenshot({ path: 'test-results/debug-chatgpt-timeout.png', fullPage: true });
     throw new Error(`[ChatGPT] 이미지 생성 타임아웃 (${timeoutMs / 1000}초 초과)`);
+  }
+
+  /** ChatGPT가 이미지 대신 텍스트로 응답했는지 감지 */
+  private async detectTextOnlyResponse(): Promise<boolean> {
+    return await this.page.evaluate(() => {
+      // 어시스턴트 메시지 중 이미지 없이 텍스트만 있는 응답 감지
+      // article-based approach: user 메시지가 없는 article이 assistant turn
+      const turns = document.querySelectorAll('article[data-testid^="conversation-turn-"]');
+      const assistantTurns = Array.from(turns).filter(t => !t.querySelector('[data-message-author-role="user"]'));
+      if (assistantTurns.length === 0) return false;
+
+      const lastMsg = assistantTurns[assistantTurns.length - 1];
+      const hasImage = !!lastMsg.querySelector('img[alt="생성된 이미지"], img[src*="backend-api/estuary/content"], img[src*="oai"], img[src^="blob:"], img[src*="dalle"], [data-testid="image-container"]');
+      if (hasImage) return false;
+
+      // 텍스트 응답이 충분히 길면 텍스트 전용 응답으로 판단
+      const text = (lastMsg.textContent || '').trim();
+      // 응답 생성 중이 아닌지 확인 (Stop 버튼 없음)
+      const isGenerating = !!document.querySelector('button[aria-label*="Stop"]');
+      return !isGenerating && text.length > 100;
+    }).catch(() => false);
   }
 
   /** 생성된 이미지 존재 여부 확인 (생성 완료 상태만 감지) */
@@ -272,20 +309,18 @@ export class ChatGPTImageGenerator {
 
     // ChatGPT 응답 내 이미지 셀렉터 (우선순위 순)
     const imageSelectors = [
+      // DALL-E generated images (most reliable, 2026-02)
+      'img[alt="생성된 이미지"]',
+      'article img[src*="backend-api/estuary/content"]',
       // DALL-E 이미지 컨테이너
       '[data-testid="image-container"] img',
-      // 응답 내 이미지 (다양한 src 패턴)
-      '[data-message-author-role="assistant"] img[src*="oaidalleapi"]',
-      '[data-message-author-role="assistant"] img[src*="dalle"]',
-      '[data-message-author-role="assistant"] img[src*="openai"]',
-      // blob URL 이미지
-      '[data-message-author-role="assistant"] img[src^="blob:"]',
-      // 일반 이미지 (아바타/아이콘 제외, 크기 큰 것만)
-      '[data-message-author-role="assistant"] img:not([src*="avatar"]):not([src*="icon"]):not([alt="User"]):not([alt="ChatGPT"])',
-      // 더 넓은 범위
-      'article img[src*="oai"]',
-      'article img[src^="blob:"]',
-      'article img[src^="https://"]',
+      // Article-based selectors (conversation turns without user messages)
+      'article[data-testid^="conversation-turn-"] img[src*="oaidalleapi"]',
+      'article[data-testid^="conversation-turn-"] img[src*="dalle"]',
+      'article[data-testid^="conversation-turn-"] img[src*="openai"]',
+      'article[data-testid^="conversation-turn-"] img[src^="blob:"]',
+      // Broader: any article image that's large enough (avatars/icons excluded)
+      'article img[src^="https://"]:not([src*="avatar"]):not([src*="icon"]):not([src*="auth0"]):not([class*="w-6"]):not([class*="h-6"])',
     ];
 
     for (const selector of imageSelectors) {
@@ -328,53 +363,20 @@ export class ChatGPTImageGenerator {
     }
 
     const imageSelectors = [
+      'img[alt="생성된 이미지"]',
+      'article img[src*="backend-api/estuary/content"]',
       '[data-testid="image-container"] img',
-      '[data-message-author-role="assistant"] img[src*="oaidalleapi"]',
-      '[data-message-author-role="assistant"] img[src*="dalle"]',
-      '[data-message-author-role="assistant"] img[src*="openai"]',
-      '[data-message-author-role="assistant"] img[src^="blob:"]',
-      '[data-message-author-role="assistant"] img[src^="https://"]:not([src*="avatar"]):not([src*="icon"]):not([width="24"]):not([width="20"])',
-      'article img[src*="oai"]',
-      'article img[src^="blob:"]',
-      'article img[src^="https://"]',
+      'article[data-testid^="conversation-turn-"] img[src*="oaidalleapi"]',
+      'article[data-testid^="conversation-turn-"] img[src*="dalle"]',
+      'article[data-testid^="conversation-turn-"] img[src*="openai"]',
+      'article[data-testid^="conversation-turn-"] img[src^="blob:"]',
+      'article img[src^="https://"]:not([src*="avatar"]):not([src*="icon"]):not([src*="auth0"]):not([class*="w-6"]):not([class*="h-6"])',
     ];
 
-    // ── 방법 1: 다운로드 버튼(↓) 클릭 ──
-    console.log('[ChatGPT] 방법 1: 다운로드 버튼 시도...');
-    try {
-      const downloadBtnSelectors = [
-        // ChatGPT 이미지 하단 다운로드 버튼
-        'button[aria-label*="Download"]',
-        'button[aria-label*="다운로드"]',
-        'button[aria-label*="download"]',
-        // SVG 다운로드 아이콘 버튼 (↓ 화살표)
-        'button:has(svg path[d*="M12"])',
-        // 이미지 컨테이너 내 버튼
-        '[data-testid="image-container"] button',
-        // 일반 다운로드 링크
-        'a[download]',
-        'a[href*="download"]',
-      ];
-
-      for (const selector of downloadBtnSelectors) {
-        try {
-          const btn = this.page.locator(selector).last();
-          if (await btn.isVisible({ timeout: 2_000 }).catch(() => false)) {
-            const downloadPromise = this.page.waitForEvent('download', { timeout: 15_000 });
-            await btn.click();
-            const download = await downloadPromise;
-            await download.saveAs(savePath);
-            console.log(`[ChatGPT] 이미지 저장 완료 (다운로드 버튼): ${savePath}`);
-            return savePath;
-          }
-        } catch { /* continue */ }
-      }
-    } catch (e: any) {
-      console.log(`[ChatGPT] 다운로드 버튼 실패: ${e.message}`);
-    }
-
-    // ── 방법 2: fetch로 이미지 데이터 추출 ──
-    console.log('[ChatGPT] 방법 2: fetch 시도...');
+    // ── 방법 1: fetch로 이미지 데이터 추출 ──
+    // CDP 모드에서 다운로드 버튼은 네이티브 OS "다른 이름으로 저장" 다이얼로그를
+    // 열어서 Playwright가 제어 불가 → fetch 기반을 최우선으로 사용
+    console.log('[ChatGPT] 방법 1: fetch 시도...');
     for (const selector of imageSelectors) {
       try {
         const images = this.page.locator(selector);
@@ -414,8 +416,8 @@ export class ChatGPTImageGenerator {
       } catch { /* continue */ }
     }
 
-    // ── 방법 3: canvas 렌더링 ──
-    console.log('[ChatGPT] 방법 3: canvas 렌더링 시도...');
+    // ── 방법 2: canvas 렌더링 ──
+    console.log('[ChatGPT] 방법 2: canvas 렌더링 시도...');
     for (const selector of imageSelectors) {
       try {
         const images = this.page.locator(selector);
@@ -450,8 +452,8 @@ export class ChatGPTImageGenerator {
       } catch { /* continue */ }
     }
 
-    // ── 방법 4: 요소 스크린샷 (최후 폴백) ──
-    console.log('[ChatGPT] 방법 4: 스크린샷 폴백...');
+    // ── 방법 3: 요소 스크린샷 (최후 폴백) ──
+    console.log('[ChatGPT] 방법 3: 스크린샷 폴백...');
     for (const selector of imageSelectors) {
       try {
         const img = this.page.locator(selector).last();
@@ -497,7 +499,11 @@ export class ChatGPTImageGenerator {
 
     await this.navigateToChatGPT();
     await this.startNewChat();
-    await this.sendImagePrompt(prompt);
+
+    // 프롬프트만 보내면 ChatGPT가 텍스트로 응답할 수 있음
+    // 명시적으로 DALL-E 이미지 생성을 지시
+    const imagePrompt = `Generate this image with DALL-E. Do NOT respond with text, just create the image:\n\n${prompt}`;
+    await this.sendImagePrompt(imagePrompt);
     await this.waitForImageGeneration(timeoutMs);
     return await this.downloadGeneratedImage(savePath);
   }
@@ -573,8 +579,8 @@ SEO 최적화된 블로그 제목 한 줄
       if (await stopBtn.first().isVisible({ timeout: 1_000 }).catch(() => false)) {
         break;
       }
-      const msgs = this.page.locator('[data-message-author-role="assistant"]');
-      if ((await msgs.count()) > 0) break;
+      const assistantTurns = this.page.locator('article[data-testid^="conversation-turn-"]:not(:has([data-message-author-role="user"]))');
+      if ((await assistantTurns.count()) > 0) break;
       await humanDelay(500, 1000);
     }
 
@@ -620,9 +626,10 @@ SEO 최적화된 블로그 제목 한 줄
   /** ChatGPT 마지막 응답 텍스트 추출 */
   async getLastResponseText(): Promise<string> {
     return await this.page.evaluate(() => {
-      const messages = document.querySelectorAll('[data-message-author-role="assistant"]');
-      if (messages.length === 0) return '';
-      const lastMsg = messages[messages.length - 1];
+      const turns = document.querySelectorAll('article[data-testid^="conversation-turn-"]');
+      const assistantTurns = Array.from(turns).filter(t => !t.querySelector('[data-message-author-role="user"]'));
+      if (assistantTurns.length === 0) return '';
+      const lastMsg = assistantTurns[assistantTurns.length - 1];
       const markdown = lastMsg.querySelector('.markdown, .prose');
       return (markdown || lastMsg).textContent?.trim() || '';
     });

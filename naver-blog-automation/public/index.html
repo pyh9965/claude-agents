@@ -403,6 +403,9 @@
             <button class="provider-btn" id="providerGemini" onclick="setProvider('gemini')">
               ✨ Gemini
             </button>
+            <button class="provider-btn" id="providerClaude" onclick="setProvider('claude')">
+              🟠 Claude
+            </button>
           </div>
         </div>
         <div style="display:flex; gap:8px;">
@@ -507,18 +510,21 @@
     let tags = [];
     let sectionCount = 0;
     let selectedProvider = 'chatgpt';
+    let autoPublishPending = false; // "글 자동 생성" 시 발행까지 자동 진행
 
     // ─── Provider Toggle ───
     function setProvider(provider) {
       selectedProvider = provider;
       document.getElementById('providerChatGPT').classList.toggle('active', provider === 'chatgpt');
       document.getElementById('providerGemini').classList.toggle('active', provider === 'gemini');
+      document.getElementById('providerClaude').classList.toggle('active', provider === 'claude');
       const desc = document.getElementById('providerDesc');
-      if (provider === 'gemini') {
-        desc.textContent = 'Gemini가 주제에 맞는 제목, 본문, 이미지 프롬프트, 태그를 자동 생성합니다';
-      } else {
-        desc.textContent = 'ChatGPT가 주제에 맞는 제목, 본문, 이미지 프롬프트, 태그를 자동 생성합니다';
-      }
+      const descriptions = {
+        chatgpt: 'ChatGPT가 주제에 맞는 제목, 본문, 이미지 프롬프트, 태그를 자동 생성합니다',
+        gemini: 'Gemini가 주제에 맞는 제목, 본문, 이미지 프롬프트, 태그를 자동 생성합니다',
+        claude: 'Claude가 글을 생성합니다. 이미지는 ChatGPT로 자동 생성됩니다',
+      };
+      desc.textContent = descriptions[provider] || descriptions.chatgpt;
     }
 
     // ─── SSE ───
@@ -571,6 +577,9 @@
       if (hasPrompts) {
         appendLog('이미지 자동 생성을 시작합니다...', 'info');
         setTimeout(() => generateImages(), 500);
+      } else if (autoPublishPending) {
+        appendLog('이미지 프롬프트 없음 → 바로 블로그 발행을 시작합니다...', 'info');
+        setTimeout(() => postBlog(), 500);
       } else {
         setStatus('idle', '글 생성 완료');
         disableButtons(false);
@@ -661,7 +670,8 @@
       const topic = document.getElementById('topicInput').value.trim();
       if (!topic) { alert('주제를 입력해주세요.'); return; }
 
-      setStatus('running', '글 생성 중...');
+      autoPublishPending = true; // 글 생성 → 이미지 생성 → 발행까지 자동 진행
+      setStatus('running', '글 자동 생성 → 발행 파이프라인 시작...');
       disableButtons(true);
 
       try {
@@ -677,6 +687,7 @@
       } catch (e) {
         appendLog(`오류: ${e.message}`, 'error');
         setStatus('error', '오류 발생');
+        autoPublishPending = false;
         disableButtons(false);
       }
     }
@@ -781,6 +792,7 @@
       } catch (e) {
         appendLog(`오류: ${e.message}`, 'error');
         setStatus('error', '오류 발생');
+        autoPublishPending = false;
         disableButtons(false);
       }
     }
@@ -827,7 +839,14 @@
       };
       label.textContent = labels[data.step] || data.step;
 
+      if (data.step === 'images-done' && autoPublishPending) {
+        appendLog('이미지 생성 완료 → 블로그 발행을 시작합니다...', 'info');
+        setTimeout(() => postBlog(), 1000);
+        return;
+      }
+
       if (data.step === 'done' || data.step === 'images-done') {
+        autoPublishPending = false;
         disableButtons(false);
         if (data.step === 'done') setStatus('idle', '완료');
       }
@@ -874,6 +893,7 @@
     }
 
     function showPostResult(url) {
+      autoPublishPending = false;
       const result = document.getElementById('postResult');
       const link = document.getElementById('postUrl');
       link.href = url;
