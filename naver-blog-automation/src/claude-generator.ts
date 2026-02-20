@@ -295,12 +295,24 @@ export class ClaudeGenerator {
    * 마지막 어시스턴트 응답 텍스트 반환
    *
    * 우선순위:
-   * 1. waitForTextResponse()에서 스트리밍 중 캡처된 텍스트 (가장 신뢰)
-   * 2. DOM에서 직접 추출 (폴백)
-   * 3. Copy 버튼 + 클립보드 (최후 수단)
+   * 1. 아티팩트 패널에서 추출 (Claude가 artifact로 출력하는 경우 최우선)
+   * 2. 스트리밍 중 캡처된 텍스트
+   * 3. DOM에서 직접 추출
+   * 4. Copy 버튼 + 클립보드
    */
   async getLastResponseText(): Promise<string> {
-    // ── 소스 1: 스트리밍 중 캡처된 텍스트 (Primary) ──
+    // ── 소스 1: 아티팩트 패널 (최우선) ──
+    const artifactText = await this.extractFromArtifact();
+    if (artifactText.length > 50) {
+      const cleaned = this.cleanResponseText(artifactText);
+      if (cleaned.includes('---TITLE---') && cleaned.includes('---SECTION')) {
+        console.log(`[Claude] 아티팩트에서 마커 확인됨 (${cleaned.length}자)`);
+        return cleaned;
+      }
+      console.log(`[Claude] 아티팩트 텍스트에 마커 없음 (${cleaned.length}자), 다음 소스 시도`);
+    }
+
+    // ── 소스 2: 스트리밍 중 캡처된 텍스트 ──
     if (this.capturedResponseText.length > 50) {
       let text = this.cleanResponseText(this.capturedResponseText);
       if (text.includes('---TITLE---') && text.includes('---SECTION')) {
@@ -310,7 +322,7 @@ export class ClaudeGenerator {
       console.log(`[Claude] 캡처된 텍스트에 마커 없음 (${text.length}자), DOM 폴백 시도`);
     }
 
-    // ── 소스 2: DOM에서 직접 추출 (Fallback) ──
+    // ── 소스 3: DOM에서 직접 추출 ──
     const domText = await this.extractFromDOM();
     if (domText.length > 50) {
       const cleaned = this.cleanResponseText(domText);
@@ -320,7 +332,7 @@ export class ClaudeGenerator {
       }
     }
 
-    // ── 소스 3: Copy 버튼 + 클립보드 (Last Resort) ──
+    // ── 소스 4: Copy 버튼 + 클립보드 ──
     const clipText = await this.extractViaCopyButton();
     if (clipText.length > 50) {
       const cleaned = this.cleanResponseText(clipText);
@@ -329,7 +341,7 @@ export class ClaudeGenerator {
     }
 
     // 어떤 소스든 가장 긴 텍스트 반환
-    const best = [this.capturedResponseText, domText, clipText]
+    const best = [artifactText, this.capturedResponseText, domText, clipText]
       .map(t => this.cleanResponseText(t))
       .sort((a, b) => b.length - a.length)[0];
 
@@ -339,6 +351,135 @@ export class ClaudeGenerator {
     }
 
     this.saveDebugScreenshot('no-response-text');
+    return '';
+  }
+
+  /**
+   * 아티팩트 패널에서 텍스트 추출
+   *
+   * Claude가 구조화된 콘텐츠를 아티팩트(오른쪽 패널)로 출력하는 경우,
+   * 대화 영역에는 설명 텍스트만 있고 실제 콘텐츠는 아티팩트에 있음.
+   *
+   * 전략:
+   * 1. 아티팩트 패널의 "복사" 버튼 클릭 → 클립보드에서 텍스트 추출
+   * 2. 아티팩트 패널 DOM에서 직접 텍스트 추출 (폴백)
+   */
+  private async extractFromArtifact(): Promise<string> {
+    try {
+      // ── 전략 1: 아티팩트 "복사" 버튼 클릭 ──
+      // 아티팩트 패널 헤더의 "복사" 버튼은 대화 영역의 Copy 버튼과 다름
+      const copyBtnSelectors = [
+        // 아티팩트 헤더 영역의 복사 버튼
+        'button:has-text("복사")',
+        'button:has-text("Copy")',
+        '[data-testid="copy-artifact"] button',
+        '[aria-label="Copy artifact"]',
+        '[aria-label="복사"]',
+      ];
+
+      for (const sel of copyBtnSelectors) {
+        const btns = this.page.locator(sel);
+        const count = await btns.count().catch(() => 0);
+        if (count === 0) continue;
+
+        // 아티팩트 패널의 복사 버튼을 찾기 위해 각 버튼 검사
+        for (let i = 0; i < count; i++) {
+          const btn = btns.nth(i);
+          if (!await btn.isVisible({ timeout: 2_000 }).catch(() => false)) continue;
+
+          // 아티팩트 패널 내부의 버튼인지 확인 (대화 영역이 아닌)
+          const isInArtifact = await btn.evaluate((el) => {
+            // 아티팩트 패널은 보통 aside, [role="complementary"],
+            // 또는 특정 클래스를 가진 패널 안에 있음
+            const parent = el.closest('[class*="artifact"], [class*="Artifact"], [role="complementary"], aside, [class*="side-panel"], [class*="panel"]');
+            // 또는 대화 영역 밖에 있는 경우
+            const inConversation = el.closest('[class*="conversation"], [class*="chat-message"], [data-testid="user-message"]');
+            return !!parent || !inConversation;
+          }).catch(() => false);
+
+          if (!isInArtifact) continue;
+
+          await btn.click();
+          await humanDelay(500, 800);
+
+          const text = await this.page.evaluate(() =>
+            navigator.clipboard.readText(),
+          ).catch(() => '');
+
+          if (text.length > 50) {
+            console.log(`[Claude] 아티팩트 복사 버튼으로 ${text.length}자 추출`);
+            return text;
+          }
+        }
+      }
+
+      // ── 전략 2: 아티팩트 패널 DOM에서 직접 추출 ──
+      const artifactText = await this.page.evaluate(() => {
+        // 아티팩트 콘텐츠 영역 탐색
+        const artifactSelectors = [
+          '[class*="artifact-content"]',
+          '[class*="ArtifactContent"]',
+          '[data-testid*="artifact"] [class*="content"]',
+          '[role="complementary"] [class*="content"]',
+          // 아티팩트는 보통 code 또는 pre 또는 markdown 렌더링 영역에 있음
+          'aside [class*="prose"]',
+          'aside pre',
+          '[class*="side-panel"] [class*="prose"]',
+        ];
+
+        for (const sel of artifactSelectors) {
+          const els = document.querySelectorAll(sel);
+          for (const el of els) {
+            const text = (el.textContent || '').trim();
+            if (text.includes('---TITLE---') && text.includes('---SECTION')) {
+              return text;
+            }
+          }
+        }
+
+        // 대화 영역이 아닌 곳에서 ---TITLE--- 마커를 포함한 텍스트 블록 찾기
+        const allElements = document.querySelectorAll('div, section, article, aside, pre, code');
+        for (const el of allElements) {
+          // 대화 메시지 영역 내부는 건너뛰기
+          if (el.closest('[data-testid="user-message"]')) continue;
+          if (el.closest('[data-is-streaming]')) continue;
+
+          const text = (el.textContent || '').trim();
+          // 마커가 있고, 프롬프트 템플릿이 아닌 것
+          if (text.includes('---TITLE---') &&
+              text.includes('---SECTION1---') &&
+              text.includes('---IMAGE1---') &&
+              !text.includes('아래 형식으로 정확히 작성해줘') &&
+              !text.includes('구분자를 반드시 지켜줘') &&
+              text.length < 10000) { // 너무 긴 것은 전체 페이지
+            // 자식 요소 중 더 정확한 것이 있는지 확인
+            const children = el.querySelectorAll('div, section, pre');
+            let bestChild = '';
+            for (const child of children) {
+              const ct = (child.textContent || '').trim();
+              if (ct.includes('---TITLE---') && ct.includes('---SECTION1---') &&
+                  ct.length > 100 && ct.length < text.length) {
+                if (!bestChild || ct.length < bestChild.length) {
+                  bestChild = ct;
+                }
+              }
+            }
+            return bestChild || text;
+          }
+        }
+
+        return '';
+      }).catch(() => '');
+
+      if (artifactText.length > 50) {
+        console.log(`[Claude] 아티팩트 DOM에서 ${artifactText.length}자 추출`);
+        return artifactText;
+      }
+
+    } catch (e: any) {
+      console.log(`[Claude] 아티팩트 추출 실패: ${e.message}`);
+    }
+
     return '';
   }
 
@@ -489,7 +630,8 @@ SEO 최적화된 블로그 제목 한 줄
 규칙:
 - 본문은 네이버 블로그 스타일, 친근하고 읽기 쉽게 작성
 - 이미지 프롬프트는 영어로, 구체적인 장면 묘사
-- 구분자(---TITLE--- 등)를 정확히 그대로 사용`;
+- 구분자(---TITLE--- 등)를 정확히 그대로 사용
+- 중요: artifact를 생성하지 말고 이 대화창에 직접 텍스트로 출력해줘`;
 
     await this.sendPrompt(prompt);
     await this.waitForTextResponse();
@@ -500,18 +642,28 @@ SEO 최적화된 블로그 제목 한 줄
     // 디버그: 추출된 텍스트의 처음 200자 로그
     console.log(`[Claude] 텍스트 미리보기: "${text.substring(0, 200).replace(/\n/g, '↵')}"`);
 
-    // 추출된 텍스트가 프롬프트 템플릿인지 확인
-    if (text.includes('구분자를 반드시 지켜줘') || text.includes('아래 형식으로 정확히 작성해줘')) {
-      console.log('[Claude] ⚠️ 추출된 텍스트가 프롬프트 템플릿! 스크린샷 저장 후 재추출 시도');
-      this.saveDebugScreenshot('prompt-in-response');
+    // 추출된 텍스트에 마커가 없거나 프롬프트 템플릿인 경우 → 아티팩트/bruteForce 재시도
+    const needsRetry = !text.includes('---TITLE---') ||
+      !text.includes('---SECTION1---') ||
+      text.includes('구분자를 반드시 지켜줘') ||
+      text.includes('아래 형식으로 정확히 작성해줘');
 
-      // DOM 전체 분석 후 재추출 시도
-      const retryText = await this.bruteForceExtract();
-      if (retryText.length > 100 && retryText.includes('---TITLE---')) {
-        console.log(`[Claude] bruteForce 재추출 성공 (${retryText.length}자)`);
-        const content = this.parseBlogContent(retryText);
-        console.log(`[Claude] 파싱 완료: 제목="${content.title}", 섹션=${content.sections.length}개, 태그=${content.tags.length}개`);
-        return content;
+    if (needsRetry) {
+      console.log('[Claude] ⚠️ 텍스트에 마커 없거나 프롬프트 혼입 → 재추출 시도');
+      this.saveDebugScreenshot('needs-retry');
+
+      // 아티팩트에서 한 번 더 시도 (응답 완료 후 패널이 열렸을 수 있음)
+      const artifactRetry = await this.extractFromArtifact();
+      if (artifactRetry.length > 100 && artifactRetry.includes('---TITLE---')) {
+        console.log(`[Claude] 아티팩트 재추출 성공 (${artifactRetry.length}자)`);
+        text = this.cleanResponseText(artifactRetry);
+      } else {
+        // DOM 전체 분석 후 재추출 시도
+        const retryText = await this.bruteForceExtract();
+        if (retryText.length > 100 && retryText.includes('---TITLE---')) {
+          console.log(`[Claude] bruteForce 재추출 성공 (${retryText.length}자)`);
+          text = this.cleanResponseText(retryText);
+        }
       }
     }
 
