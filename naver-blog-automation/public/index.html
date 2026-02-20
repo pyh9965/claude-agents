@@ -577,11 +577,10 @@
       if (hasPrompts) {
         appendLog('이미지 자동 생성을 시작합니다...', 'info');
         setTimeout(() => generateImages(), 500);
-      } else if (autoPublishPending) {
-        appendLog('이미지 프롬프트 없음 → 바로 블로그 발행을 시작합니다...', 'info');
-        setTimeout(() => postBlog(), 500);
       } else {
-        setStatus('idle', '글 생성 완료');
+        appendLog('이미지 프롬프트가 없습니다. 이미지 프롬프트를 추가해주세요.', 'warn');
+        autoPublishPending = false;
+        setStatus('error', '이미지 프롬프트 필요');
         disableButtons(false);
       }
     });
@@ -724,7 +723,8 @@
       });
 
       if (!prompts.length) {
-        alert('이미지 프롬프트를 최소 1개 입력해주세요.');
+        alert('이미지 프롬프트를 최소 1개 입력해주세요. 이미지 없이는 발행할 수 없습니다.');
+        autoPublishPending = false;
         return;
       }
 
@@ -767,11 +767,14 @@
       if (!sections.length) { alert('본문 섹션을 최소 1개 추가해주세요.'); return; }
 
       const hasPrompts = sections.some(s => s.imagePrompt?.trim());
-      if (hasPrompts) {
-        appendLog('이미지 프롬프트 감지 → 이미지 생성 후 발행합니다.', 'info');
+      if (!hasPrompts) {
+        alert('이미지 프롬프트가 최소 1개 필요합니다. 이미지 없이는 발행할 수 없습니다.');
+        autoPublishPending = false;
+        return;
       }
 
-      setStatus('running', hasPrompts ? '이미지 생성 + 발행 중...' : '발행 중...');
+      appendLog('이미지 프롬프트 감지 → 이미지 생성 후 발행합니다.', 'info');
+      setStatus('running', '이미지 생성 + 발행 중...');
       disableButtons(true);
 
       try {
@@ -920,7 +923,7 @@
       addSection('', '블로그 썸네일 이미지 프롬프트...', true);
       addSection('', '', true);
       addSection('', '', true);
-      addSection('', '', false);
+      addSection('', '', true);
 
       // 서버 상태 불러오기
       try {
