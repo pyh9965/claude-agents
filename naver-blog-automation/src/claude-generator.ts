@@ -252,20 +252,22 @@ export class ClaudeGenerator {
         if (result.len > 50) {
           this.capturedResponseText = result.text;
           console.log(`[Claude] 스트리밍 완료 (data-is-streaming="false"), ${result.len}자`);
-          // 안정성 확인 한 번 더
-          await humanDelay(2000, 3000);
+          // 아티팩트가 렌더링되는 시간 확보 (아티팩트 패널이 열리는 데 시간 소요)
+          console.log('[Claude] 아티팩트 렌더링 대기 (5초)...');
+          await humanDelay(5000, 7000);
           return;
         }
       } else if (result.phase === 'generating') {
         streamingDetected = true;
         stableCount = 0;
       } else if (result.phase === 'idle') {
-        if (streamingDetected && this.capturedResponseText.length > 50) {
-          // 스트리밍이 감지됐었는데 이제 관련 요소가 모두 사라짐
-          // → 캡처된 텍스트로 완료 처리
+        if (streamingDetected) {
           stableCount++;
           if (stableCount >= 2) {
-            console.log(`[Claude] 스트리밍 요소 사라짐, 캡처된 텍스트 사용 (${this.capturedResponseText.length}자)`);
+            console.log(`[Claude] 스트리밍 요소 사라짐 (캡처: ${this.capturedResponseText.length}자)`);
+            // 아티팩트 렌더링 대기
+            console.log('[Claude] 아티팩트 렌더링 대기 (5초)...');
+            await humanDelay(5000, 7000);
             return;
           }
         } else if (!streamingDetected) {
@@ -357,127 +359,118 @@ export class ClaudeGenerator {
   /**
    * 아티팩트 패널에서 텍스트 추출
    *
-   * Claude가 구조화된 콘텐츠를 아티팩트(오른쪽 패널)로 출력하는 경우,
-   * 대화 영역에는 설명 텍스트만 있고 실제 콘텐츠는 아티팩트에 있음.
+   * Claude.ai 아티팩트 DOM 구조 (디버그로 확인):
+   * - 아티팩트 "복사" 버튼: text="복사", data-testid 없음, 위치 x>1000 (오른쪽 패널 헤더)
+   * - 대화 영역 Copy 버튼: aria-label="Copy", data-testid="action-bar-copy" (프롬프트 복사!)
+   * - 아티팩트 콘텐츠: div.flex-1.min-h-0.bg-bg-000, x>700 (오른쪽 패널)
    *
-   * 전략:
-   * 1. 아티팩트 패널의 "복사" 버튼 클릭 → 클립보드에서 텍스트 추출
-   * 2. 아티팩트 패널 DOM에서 직접 텍스트 추출 (폴백)
+   * 핵심: 대화 영역 Copy 버튼은 프롬프트 템플릿을 복사하므로 반드시 구분해야 함
    */
   private async extractFromArtifact(): Promise<string> {
+    console.log('[Claude] 아티팩트 추출 시도...');
+
     try {
-      // ── 전략 1: 아티팩트 "복사" 버튼 클릭 ──
-      // 아티팩트 패널 헤더의 "복사" 버튼은 대화 영역의 Copy 버튼과 다름
-      const copyBtnSelectors = [
-        // 아티팩트 헤더 영역의 복사 버튼
-        'button:has-text("복사")',
-        'button:has-text("Copy")',
-        '[data-testid="copy-artifact"] button',
-        '[aria-label="Copy artifact"]',
-        '[aria-label="복사"]',
-      ];
+      // ── 전략 1: 아티팩트 패널 DOM에서 직접 추출 (가장 빠르고 확실) ──
+      // 아티팩트 콘텐츠는 화면 오른쪽(x>700)에 있고, 프롬프트 템플릿을 포함하지 않음
+      const domText = await this.page.evaluate(() => {
+        const candidates: Array<{ text: string; len: number; x: number }> = [];
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
+        let node: Node | null;
 
-      for (const sel of copyBtnSelectors) {
-        const btns = this.page.locator(sel);
-        const count = await btns.count().catch(() => 0);
-        if (count === 0) continue;
+        while ((node = walker.nextNode())) {
+          const el = node as HTMLElement;
+          if (['SCRIPT', 'STYLE', 'INPUT', 'TEXTAREA', 'BUTTON', 'SVG'].includes(el.tagName)) continue;
 
-        // 아티팩트 패널의 복사 버튼을 찾기 위해 각 버튼 검사
-        for (let i = 0; i < count; i++) {
-          const btn = btns.nth(i);
-          if (!await btn.isVisible({ timeout: 2_000 }).catch(() => false)) continue;
+          const text = (el.innerText || '').trim();
+          if (text.length < 200 || text.length > 15000) continue;
 
-          // 아티팩트 패널 내부의 버튼인지 확인 (대화 영역이 아닌)
-          const isInArtifact = await btn.evaluate((el) => {
-            // 아티팩트 패널은 보통 aside, [role="complementary"],
-            // 또는 특정 클래스를 가진 패널 안에 있음
-            const parent = el.closest('[class*="artifact"], [class*="Artifact"], [role="complementary"], aside, [class*="side-panel"], [class*="panel"]');
-            // 또는 대화 영역 밖에 있는 경우
-            const inConversation = el.closest('[class*="conversation"], [class*="chat-message"], [data-testid="user-message"]');
-            return !!parent || !inConversation;
-          }).catch(() => false);
-
-          if (!isInArtifact) continue;
-
-          await btn.click();
-          await humanDelay(500, 800);
-
-          const text = await this.page.evaluate(() =>
-            navigator.clipboard.readText(),
-          ).catch(() => '');
-
-          if (text.length > 50) {
-            console.log(`[Claude] 아티팩트 복사 버튼으로 ${text.length}자 추출`);
-            return text;
-          }
-        }
-      }
-
-      // ── 전략 2: 아티팩트 패널 DOM에서 직접 추출 ──
-      const artifactText = await this.page.evaluate(() => {
-        // 아티팩트 콘텐츠 영역 탐색
-        const artifactSelectors = [
-          '[class*="artifact-content"]',
-          '[class*="ArtifactContent"]',
-          '[data-testid*="artifact"] [class*="content"]',
-          '[role="complementary"] [class*="content"]',
-          // 아티팩트는 보통 code 또는 pre 또는 markdown 렌더링 영역에 있음
-          'aside [class*="prose"]',
-          'aside pre',
-          '[class*="side-panel"] [class*="prose"]',
-        ];
-
-        for (const sel of artifactSelectors) {
-          const els = document.querySelectorAll(sel);
-          for (const el of els) {
-            const text = (el.textContent || '').trim();
-            if (text.includes('---TITLE---') && text.includes('---SECTION')) {
-              return text;
-            }
-          }
-        }
-
-        // 대화 영역이 아닌 곳에서 ---TITLE--- 마커를 포함한 텍스트 블록 찾기
-        const allElements = document.querySelectorAll('div, section, article, aside, pre, code');
-        for (const el of allElements) {
-          // 대화 메시지 영역 내부는 건너뛰기
-          if (el.closest('[data-testid="user-message"]')) continue;
-          if (el.closest('[data-is-streaming]')) continue;
-
-          const text = (el.textContent || '').trim();
-          // 마커가 있고, 프롬프트 템플릿이 아닌 것
           if (text.includes('---TITLE---') &&
               text.includes('---SECTION1---') &&
               text.includes('---IMAGE1---') &&
               !text.includes('아래 형식으로 정확히 작성해줘') &&
-              !text.includes('구분자를 반드시 지켜줘') &&
-              text.length < 10000) { // 너무 긴 것은 전체 페이지
-            // 자식 요소 중 더 정확한 것이 있는지 확인
-            const children = el.querySelectorAll('div, section, pre');
-            let bestChild = '';
-            for (const child of children) {
-              const ct = (child.textContent || '').trim();
-              if (ct.includes('---TITLE---') && ct.includes('---SECTION1---') &&
-                  ct.length > 100 && ct.length < text.length) {
-                if (!bestChild || ct.length < bestChild.length) {
-                  bestChild = ct;
-                }
-              }
-            }
-            return bestChild || text;
+              !text.includes('구분자를 반드시 지켜줘')) {
+
+            if (el.closest('[data-testid="user-message"]')) continue;
+
+            const rect = el.getBoundingClientRect();
+            // 아티팩트 패널은 화면 오른쪽 (x > 700)
+            candidates.push({ text, len: text.length, x: rect.x });
           }
         }
 
-        return '';
+        if (candidates.length === 0) return '';
+
+        // 오른쪽 패널(x>700) 우선, 그 중 가장 짧은 것 (가장 정확)
+        const rightPanel = candidates.filter(c => c.x > 700);
+        if (rightPanel.length > 0) {
+          rightPanel.sort((a, b) => a.len - b.len);
+          return rightPanel[0].text;
+        }
+
+        // 오른쪽 패널이 없으면 전체 중 가장 짧은 것
+        candidates.sort((a, b) => a.len - b.len);
+        return candidates[0].text;
       }).catch(() => '');
 
-      if (artifactText.length > 50) {
-        console.log(`[Claude] 아티팩트 DOM에서 ${artifactText.length}자 추출`);
-        return artifactText;
+      if (domText.length > 100) {
+        console.log(`[Claude] 아티팩트 DOM에서 직접 추출 성공 (${domText.length}자)`);
+        return domText;
       }
 
+      // ── 전략 2: 아티팩트 "복사" 버튼 클릭 (text="복사"인 버튼만) ──
+      // 주의: data-testid="action-bar-copy" 버튼은 대화 영역 것이므로 건너뜀!
+      console.log('[Claude] DOM 직접 추출 실패 → 아티팩트 복사 버튼 시도');
+
+      const allButtons = this.page.locator('button');
+      const btnCount = await allButtons.count().catch(() => 0);
+
+      for (let i = 0; i < btnCount; i++) {
+        const btn = allButtons.nth(i);
+        try {
+          if (!await btn.isVisible({ timeout: 500 }).catch(() => false)) continue;
+
+          const btnInfo = await btn.evaluate((el) => ({
+            text: (el.textContent || '').trim().substring(0, 30),
+            testId: el.getAttribute('data-testid') || '',
+            x: el.getBoundingClientRect().x,
+          })).catch(() => ({ text: '', testId: '', x: 0 }));
+
+          // 대화 영역 Copy 버튼 건너뛰기 (프롬프트 템플릿 복사됨!)
+          if (btnInfo.testId === 'action-bar-copy') continue;
+
+          // text에 "복사"가 포함된 버튼만 (아티팩트 헤더의 복사 버튼)
+          if (!btnInfo.text.includes('복사')) continue;
+
+          // 오른쪽 패널에 있는지 확인 (x > 700)
+          if (btnInfo.x < 700) continue;
+
+          console.log(`[Claude] 아티팩트 복사 버튼 발견: text="${btnInfo.text}", x=${Math.round(btnInfo.x)}`);
+
+          await this.page.evaluate(() => navigator.clipboard.writeText('')).catch(() => {});
+          await btn.click();
+          await humanDelay(800, 1200);
+
+          const clipText = await this.page.evaluate(() =>
+            navigator.clipboard.readText(),
+          ).catch(() => '');
+
+          if (clipText.length > 100 &&
+              clipText.includes('---TITLE---') &&
+              clipText.includes('---SECTION1---') &&
+              !clipText.includes('아래 형식으로 정확히 작성해줘')) {
+            console.log(`[Claude] 아티팩트 복사 버튼 성공! (${clipText.length}자)`);
+            return clipText;
+          }
+
+          if (clipText.length > 50) {
+            console.log(`[Claude] 복사됨 (${clipText.length}자) but 유효하지 않음`);
+          }
+        } catch { /* 다음 */ }
+      }
+
+      console.log('[Claude] 아티팩트 추출 실패: 모든 전략 소진');
     } catch (e: any) {
-      console.log(`[Claude] 아티팩트 추출 실패: ${e.message}`);
+      console.log(`[Claude] 아티팩트 추출 오류: ${e.message}`);
     }
 
     return '';
@@ -675,64 +668,40 @@ SEO 최적화된 블로그 제목 한 줄
 
   /**
    * DOM 전체를 분석해서 어시스턴트 응답을 brute-force로 찾기
-   * 모든 전략이 실패했을 때 사용하는 최후 수단
+   * extractFromArtifact()와 동일한 오른쪽 패널 우선 로직 사용
    */
   private async bruteForceExtract(): Promise<string> {
     return await this.page.evaluate(() => {
-      const results: Array<{ text: string; source: string }> = [];
+      const results: Array<{ text: string; x: number; len: number }> = [];
 
-      // 페이지의 모든 요소 중 ---TITLE---와 ---SECTION1---을 모두 포함하는 것 찾기
       const allElements = document.querySelectorAll('*');
       for (const el of allElements) {
-        // user-message 내부는 건너뛰기
         if (el.closest('[data-testid="user-message"]')) continue;
+        if (['SCRIPT', 'STYLE', 'SVG'].includes(el.tagName)) continue;
 
-        const text = (el.innerText || el.textContent || '').trim();
+        const text = (el.innerText || '').trim();
+        if (text.length < 200 || text.length > 15000) continue;
 
-        // 프롬프트 템플릿이 아닌 실제 응답인지 확인
-        // 프롬프트에는 "아래 형식으로 정확히 작성해줘"가 포함됨
-        // 실제 응답에는 포함되지 않음
         if (text.includes('---TITLE---') &&
             text.includes('---SECTION1---') &&
             !text.includes('아래 형식으로 정확히 작성해줘') &&
             !text.includes('구분자를 반드시 지켜줘')) {
-          results.push({
-            text,
-            source: `<${el.tagName.toLowerCase()} class="${(el.className?.toString() || '').substring(0, 60)}">`,
-          });
+          const rect = el.getBoundingClientRect();
+          results.push({ text, x: rect.x, len: text.length });
         }
       }
 
-      if (results.length === 0) {
-        // 프롬프트 제외 필터 없이 다시 시도 (마지막에서 응답만 추출)
-        for (const el of allElements) {
-          if (el.closest('[data-testid="user-message"]')) continue;
+      if (results.length === 0) return '';
 
-          const text = (el.innerText || el.textContent || '').trim();
-          if (text.includes('---TITLE---') && text.includes('---SECTION1---')) {
-            // ---TITLE---가 2번 이상 나오면 마지막 것만 사용
-            const lastTitleIdx = text.lastIndexOf('---TITLE---');
-            const secondLastTitleIdx = text.lastIndexOf('---TITLE---', lastTitleIdx - 1);
-            if (secondLastTitleIdx >= 0) {
-              // 유저 프롬프트 + 응답이 합쳐진 경우 → 마지막 ---TITLE---부터
-              results.push({
-                text: text.substring(lastTitleIdx),
-                source: `<${el.tagName.toLowerCase()}> [split-from-idx-${lastTitleIdx}]`,
-              });
-            } else {
-              results.push({
-                text,
-                source: `<${el.tagName.toLowerCase()}> [no-filter]`,
-              });
-            }
-          }
-        }
+      // 오른쪽 패널(x>700) 우선, 가장 짧은 것이 가장 정확
+      const rightPanel = results.filter(r => r.x > 700);
+      if (rightPanel.length > 0) {
+        rightPanel.sort((a, b) => a.len - b.len);
+        return rightPanel[0].text;
       }
 
-      // 가장 짧은 것이 가장 정확 (불필요한 wrapper 텍스트 제외)
-      // 단, 최소 100자 이상이어야 실제 응답
-      const valid = results.filter(r => r.text.length > 100);
-      valid.sort((a, b) => a.text.length - b.text.length);
+      results.sort((a, b) => a.len - b.len);
+      const valid = results.filter(r => r.len > 100);
 
       if (valid.length > 0) {
         return valid[0].text;
